@@ -47,14 +47,11 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
     FilterLuminance fltLum;
     Image *lum = fltLum.ProcessP(Single(imgIn), NULL);
 
-    Image *lum_log = lum->Clone();
-    lum_log->ApplyFunction(log2fPlusEpsilon);
-
     float maxL = lum->getMaxVal()[0];
     float minL = lum->getMinVal()[0];
+    float Lav = lum->getLogMeanVal()[0];
     float maxL_log = log2fPlusEpsilon(maxL);
     float minL_log = log2fPlusEpsilon(minL);
-    float Lav = lum->getLogMeanVal()[0];
 
     if(alpha <= 0.0f) {
         alpha = EstimateAlpha(maxL, minL, Lav);
@@ -63,7 +60,8 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
     if(whitePoint <= 0.0f) {
         whitePoint = EstimateWhitePoint(maxL, minL);
     }
-    float whitePoint2 = whitePoint * whitePoint;
+
+    float whitePoint_sq = whitePoint * whitePoint;
 
     int Z = int(ceilf(maxL_log - minL_log));
 
@@ -75,6 +73,7 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
         }
     }
 
+    //Choose the representative Rz for each zone
     float *Rz = new float[Z];
     float *fstop = new float[Z];
     int	  *counter = new int[Z];
@@ -87,42 +86,40 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
 
     for(int i = 0; i < lum->height; i++) {
         for(int j = 0; j < lum->width; j++) {
+            float L = (*lum)(j,i)[0];
+            float L_log = log2fPlusEpsilon(L);
 
-            int indx = i * lum->width + j;
-            float L_log = lum_log->data[indx];
+            int zone = CLAMP(int(ceilf(L_log - minL_log)), Z);
 
-            int c = CLAMP(int(ceilf(L_log - minL_log)), Z);
-
-            Rz[c] += lum->data[indx];
-            counter[c]++;
+            Rz[zone] += L;
+            counter[zone]++;
         }
     }
 
     for(int i = 0; i < Z; i++) {
         if((counter[i] > 0) && (Rz[i] > 0.0f)) {
-            //Average
+            //Average L for zone Z
             Rz[i] /= float(counter[i]);
 
             //photographic operator
-            Rz[i] = Rz[i] * alpha / Lav;
-            float f = (Rz[i] * (1 + Rz[i] / whitePoint2) ) / (Rz[i] + 1.0f);
-            float tmp = f / Rz[i];
-            fstop[i] = log2fPlusEpsilon(tmp);
+            float Rz2 = Rz[i] * alpha / Lav;
+            float f = (Rz2 * (1 + Rz2 / whitePoint_sq) ) / (1.0f + Rz2);
+            fstop[i] = log2fPlusEpsilon(f / Rz[i]);
         }
     }
 
     //creating the fstop maps
+    lum->ApplyFunction(log2fPlusEpsilon);
+
     Image *fstopMap = lum->AllocateSimilarOne();
 
     for(int i = 0; i < lum->height; i++) {
         for(int j = 0; j < lum->width; j++) {
+            float L_log = (*lum)(j,i)[0];
 
-            int indx = i * lum->width + j;
-            float L_log = lum_log->data[indx];
+            int zone = CLAMP(int(ceilf(L_log - minL_log)), Z);
 
-            int c = CLAMP(int(ceilf(L_log - minL_log)), Z);
-
-            fstopMap->data[indx] = fstop[c];
+            (*fstopMap)(j,i)[0] = fstop[zone];
 
         }
     }
@@ -130,16 +127,16 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
     //Lischinski minimization
     Image *tmp = lum->AllocateSimilarOne();
     *tmp = 0.007f;
-    fstopMap = LischinskiMinimization(lum_log, fstopMap, tmp);
+    Image *fstopMap_min = LischinskiMinimization(lum, fstopMap, tmp);
 
-    for(int i = 0; i < lum->height; i++) {
-        for(int j = 0; j < lum->width; j++) {
+    for(int i = 0; i < imgOut->height; i++) {
+        for(int j = 0; j < imgOut->width; j++) {
             float *val = (*imgOut)(j, i);
-            float *tmp = (*fstopMap)(j, i);
-            float tmpValue = powf(2.0f, tmp[0]);
 
-            for(int i = 0; i < 3; i++) {
-                val[i] *= tmpValue;
+            float exposure = powf(2.0f, (*fstopMap_min)(j, i)[0]);
+
+            for(int i = 0; i < imgOut->channels; i++) {
+                val[i] *= exposure;
             }
         }
     }
@@ -147,6 +144,9 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
     delete[] Rz;
     delete[] fstop;
     delete[] counter;
+    delete fstopMap;
+    delete fstopMap_min;
+
     return imgOut;
 }
 
