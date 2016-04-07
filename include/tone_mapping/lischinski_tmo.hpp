@@ -50,11 +50,10 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
     Image *lum_log = lum->Clone();
     lum_log->ApplyFunction(log2fPlusEpsilon);
 
-    const float epsilon = 1e-6;
     float maxL = lum->getMaxVal()[0];
     float minL = lum->getMinVal()[0];
-    float maxL_log = log2f(maxL);
-    float minL_log = log2f(minL + epsilon);
+    float maxL_log = log2fPlusEpsilon(maxL);
+    float minL_log = log2fPlusEpsilon(minL);
     float Lav = lum->getLogMeanVal()[0];
 
     if(alpha <= 0.0f) {
@@ -100,7 +99,7 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
     }
 
     for(int i = 0; i < Z; i++) {
-        if(counter[i] > 0) {
+        if((counter[i] > 0) && (Rz[i] > 0.0f)) {
             //Average
             Rz[i] /= float(counter[i]);
 
@@ -108,7 +107,7 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
             Rz[i] = Rz[i] * alpha / Lav;
             float f = (Rz[i] * (1 + Rz[i] / whitePoint2) ) / (Rz[i] + 1.0f);
             float tmp = f / Rz[i];
-            fstop[i] = log2f(tmp);
+            fstop[i] = log2fPlusEpsilon(tmp);
         }
     }
 
@@ -127,8 +126,6 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
 
         }
     }
-
-    fstopMap->Write("../fstop.pfm");
 
     //Lischinski minimization
     Image *tmp = lum->AllocateSimilarOne();
