@@ -74,14 +74,13 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
     }
 
     //Choose the representative Rz for each zone
-    float *Rz = new float[Z];
+    std::vector<float> *zones = new std::vector<float>[Z];
     float *fstop = new float[Z];
-    int	  *counter = new int[Z];
+    float *Rz = new float[Z];
 
     for(int i = 0; i < Z; i++) {
         Rz[i] = 0.0f;
         fstop[i] = 0.0f;
-        counter[i] = 0;
     }
 
     for(int i = 0; i < lum->height; i++) {
@@ -91,20 +90,21 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
 
             int zone = CLAMP(int(ceilf(L_log - minL_log)), Z);
 
-            Rz[zone] += L;
-            counter[zone]++;
+            zones[zone].push_back(L);
         }
     }
 
     for(int i = 0; i < Z; i++) {
-        if((counter[i] > 0) && (Rz[i] > 0.0f)) {
-            //Average L for zone Z
-            Rz[i] /= float(counter[i]);
-
-            //photographic operator
-            float Rz2 = Rz[i] * alpha / Lav;
-            float f = (Rz2 * (1 + Rz2 / whitePoint_sq) ) / (1.0f + Rz2);
-            fstop[i] = log2fPlusEpsilon(f / Rz[i]);
+        unsigned int n = zones[i].size();
+        if(n > 0) {
+            std::sort(zones[i].begin(), zones[i].end());
+            Rz[i] = zones[i][n / 2];
+            if(Rz[i] > 0.0f) {
+                //photographic operator
+                float Rz2 = Rz[i] * alpha / Lav;
+                float f = (Rz2 * (1 + Rz2 / whitePoint_sq) ) / (1.0f + Rz2);
+                fstop[i] = log2fPlusEpsilon(f / Rz[i]);
+            }
         }
     }
 
@@ -141,9 +141,9 @@ Image *LischinskiTMO(Image *imgIn, Image *imgOut = NULL, float alpha = -1.0f,
         }
     }
 
+    delete[] zones;
     delete[] Rz;
     delete[] fstop;
-    delete[] counter;
     delete fstopMap;
     delete fstopMap_min;
 
