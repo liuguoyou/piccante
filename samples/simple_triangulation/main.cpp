@@ -96,31 +96,11 @@ int main(int argc, char *argv[])
 
         printf("Descriptor size: %d\n", n);
 
-        for(unsigned int i =0; i<descs0.size(); i++) {
-
-            unsigned int dist_1 = 0;
-            unsigned int dist_2 = 0;
-
-            int matched_j = -1;
-
-            for(unsigned int j = 0; j < descs1.size(); j++) {
-
-                unsigned int dist = pic::BRIEFDescriptor::match(descs0.at(i), descs1.at(j), n);
-
-                if(dist > 0) {
-                    if(dist > dist_1) {
-                        dist_2 = dist_1;
-                        dist_1 = dist;
-                        matched_j = j;
-                    } else {
-                        if(dist > dist_2) {
-                            dist_2 = dist;
-                        }
-                    }
-                }
-            }
-
-            if((dist_1 * 100 > dist_2 * 105) && matched_j != -1) {
+        pic::BruteForceFeatureMatcherBinary bffm_bin(&descs1, n);
+        for(unsigned int i = 0; i< descs0.size(); i++) {
+            int matched_j;
+            unsigned int dist_1;
+            if(bffm_bin.getMatch(descs0.at(i), matched_j, dist_1)) {
                 matches.push_back(Eigen::Vector3i(i, matched_j, dist_1));
             }
         }
