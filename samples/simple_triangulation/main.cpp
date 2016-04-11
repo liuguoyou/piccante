@@ -132,9 +132,8 @@ int main(int argc, char *argv[])
         //non-linear refinement using Nelder-Mead        
         pic::NelderMeadOptFundamental nmf(m0, m1, inliers);
 
-        float *F_data = pic::getLinearArrayFromMatrix(F);
         float F_data_opt[9];
-        nmf.run(F_data, 9, 1e-4f, 10000, &F_data_opt[0]);
+        nmf.run(pic::getLinearArrayFromMatrix(F), 9, 1e-4f, 10000, &F_data_opt[0]);
         F = pic::getMatrixdFromLinearArray(F_data_opt, 3, 3);
 
         printf("Ok.\n");
@@ -161,7 +160,7 @@ int main(int argc, char *argv[])
         pic::Image imgOut1(1, img1.width, img1.height, 3);
         imgOut1.SetZero();
 
-        std::vector<Eigen::Vector3f> points_3d;
+        std::vector<Eigen::Vector3d> points_3d;
 
         Eigen::Matrix34d M0 = pic::getCameraMatrixIdentity(K);
         Eigen::Matrix34d M1 = pic::getCameraMatrix(K, R, t);
@@ -181,13 +180,22 @@ int main(int argc, char *argv[])
             float out[3];
             nmTri.run(tmpp, 3, 1e-9f, 10000, &out[0]);
 
-            points_3d.push_back(Eigen::Vector3f(out[0], out[1], out[2]));
+            points_3d.push_back(Eigen::Vector3d(out[0], out[1], out[2]));
+        }
 
-            //3d points projection
-            Eigen::Vector2i proj0 = pic::cameraMatrixProject(M0, point);
+        /*pic::NelderMeadOptRadialDistortion nmRD(M0, M1, &m0f, &m1f, &points_3d);
 
+        float lambda = 0.0f;
+        float lambda_out;
+        nmRD.run(&lambda, 1, 1e-9f, 10000, &lambda_out);
+        printf("Radial distortion lambda: %f\n", lambda_out);
+    */
+
+        for(unsigned int i = 0; i < m0f.size(); i++) {
             //first image
+            Eigen::Vector2i proj0 = pic::cameraMatrixProject(M0, points_3d[i]);
             float *tmp;
+
             tmp = imgOut0(int(m0f[i][0]), int(m0f[i][1]));
             tmp[1] = 1.0f;
 
@@ -195,7 +203,7 @@ int main(int argc, char *argv[])
             tmp[0] = 1.0f;
 
             //second image
-            Eigen::Vector2i proj1 = pic::cameraMatrixProject(M0, point);
+            Eigen::Vector2i proj1 = pic::cameraMatrixProject(M1, points_3d[i]);
 
             tmp = imgOut1(int(m1f[i][0]), int(m1f[i][1]));
             tmp[1] = 1.0f;
@@ -204,11 +212,15 @@ int main(int argc, char *argv[])
             tmp[0] = 1.0f;
         }
 
+        imgOut0.Write("../data/output/simple_triangulation_reprojection_left.png");
+        imgOut1.Write("../data/output/simple_triangulation_reprojection_right.png");
+
         //writing a PLY file
         FILE *file = fopen("../data/output/simple_triangulation_mesh.ply","w");
 
-        if (file == NULL)
+        if (file == NULL) {
             return 0;
+        }
 
         fprintf(file,"ply\n");
         fprintf(file,"format ascii 1.0\n");
@@ -237,9 +249,6 @@ int main(int argc, char *argv[])
         }
 
         fclose(file);
-
-        imgOut0.Write("../data/output/simple_triangulation_reprojection_left.png");
-        imgOut1.Write("../data/output/simple_triangulation_reprojection_right.png");
     } else {
         printf("No there is at least an invalid file!\n");
     }

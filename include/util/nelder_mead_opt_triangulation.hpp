@@ -97,7 +97,7 @@ public:
             double dx = p[i][0] - proj[0];
             double dy = p[i][1] - proj[1];
 
-            err += dx * dx + dy * dy;
+            err += (dx * dx) + (dy * dy);
         }
 
         return float(err);
