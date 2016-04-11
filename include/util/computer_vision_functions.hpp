@@ -839,7 +839,6 @@ Eigen::Vector3d triangulationLonguetHiggins(Eigen::Vector3d &point_0, Eigen::Vec
     Eigen::Vector3d r_0 = Eigen::Vector3d(R(0, 0), R(0, 1), R(0, 2));
     Eigen::Vector3d r_2 = Eigen::Vector3d(R(2, 0), R(2, 1), R(2, 2));
 
-
     Eigen::Vector3d tmp = r_0 - point_1[0] * r_2;
 
     ret[2] = tmp.dot(t) / tmp.dot(point_0);
@@ -862,7 +861,6 @@ Eigen::Vector3d triangulationLonguetHiggins(Eigen::Vector3d &point_0, Eigen::Vec
 Eigen::Vector4d triangulationHartleySturm(Eigen::Vector3d &point_0, Eigen::Vector3d &point_1,
                                           Eigen::Matrix34d &M0, Eigen::Matrix34d &M1, int maxIter = 100)
 {
-
     Eigen::Vector4d M0_row[3], M1_row[3];
 
     for(int i = 0; i < 3; i++) {

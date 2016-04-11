@@ -67,6 +67,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "util/nelder_mead_opt_fundamental.hpp"
 #include "util/nelder_mead_opt_triangulation.hpp"
 #include "util/nelder_mead_opt_gordon_lowe.hpp"
+#include "util/nelder_mead_opt_radial_distortion.hpp"
 #include "util/nelder_mead_opt_test_function.hpp"
 
 #endif /* PIC_UTIL_HPP */

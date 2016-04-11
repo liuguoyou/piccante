@@ -183,13 +183,12 @@ int main(int argc, char *argv[])
             points_3d.push_back(Eigen::Vector3d(out[0], out[1], out[2]));
         }
 
-        /*pic::NelderMeadOptRadialDistortion nmRD(M0, M1, &m0f, &m1f, &points_3d);
+        pic::NelderMeadOptRadialDistortion nmRD(M0, M1, &m0f, &m1f, &points_3d);
 
         float lambda = 0.0f;
         float lambda_out;
         nmRD.run(&lambda, 1, 1e-9f, 10000, &lambda_out);
         printf("Radial distortion lambda: %f\n", lambda_out);
-    */
 
         for(unsigned int i = 0; i < m0f.size(); i++) {
             //first image
@@ -245,7 +244,7 @@ int main(int argc, char *argv[])
             r = int(color[0] * 255.0f);
             g = int(color[1] * 255.0f);
             b = int(color[2] * 255.0f);
-            fprintf(file, " %d %d %d 255\n",r, g, b);
+            fprintf(file, " %d %d %d 255\n", r, g, b);
         }
 
         fclose(file);
