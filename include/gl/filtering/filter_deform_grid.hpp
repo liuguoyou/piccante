@@ -19,6 +19,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #define PIC_GL_FILTERING_FILTER_DEFORM_GRID_HPP
 
 #include "util/gl/bicubic.hpp"
+#include "image_samplers/image_sampler_bicubic.hpp"
 #include "filtering/filter_deform_grid.hpp"
 #include "gl/filtering/filter.hpp"
 
@@ -30,6 +31,7 @@ namespace pic {
 class FilterGLDeformGrid: public FilterGL
 {
 protected:
+    ImageSamplerBicubic isb;
 
     Image *grid_rest, *grid_move, grid_diff;
     ImageGL *grid_diff_gl;
@@ -50,6 +52,22 @@ public:
      * @param type
      */
     void Update(Image *grid_move);
+
+    /**
+     * @brief getCoordinatesAfterTransform
+     * @param x is normalized in [0,1]
+     * @param y is normalized in [0,1]
+     * @param xOut
+     * @param yOut
+     */
+    void getCoordinatesAfterTransform(float x, float y, float &xOut, float &yOut)
+    {
+        float vDiff[3];
+        isb.SampleImage(&grid_diff, x, y, vDiff);
+
+        xOut = x + vDiff[0];
+        yOut = y + vDiff[1];
+    }
 };
 
 FilterGLDeformGrid::FilterGLDeformGrid(Image *grid_move): FilterGL()

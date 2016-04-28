@@ -114,6 +114,22 @@ public:
 
         return ret;
     }
+
+    /**
+     * @brief getCoordinatesAfterTransform
+     * @param x is normalized in [0,1]
+     * @param y is normalized in [0,1]
+     * @param xOut
+     * @param yOut
+     */
+    void getCoordinatesAfterTransform(float x, float y, float &xOut, float &yOut)
+    {
+        float vDiff[3];
+        isb.SampleImage(&grid_diff, x, y, vDiff);
+
+        xOut = x + vDiff[0];
+        yOut = y + vDiff[1];
+    }
 };
 
 } // end namespace pic

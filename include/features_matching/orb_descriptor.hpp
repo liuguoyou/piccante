@@ -91,8 +91,8 @@ public:
 
         this->S = S;
         this->halfS = S >> 1;
-        this->sigma2 = float(S * S) / 25.0f;
-        this->sigma2_2 = 2.0f * this->sigma2;
+        this->sigma_sq = float(S * S) / 25.0f;
+        this->sigma_sq_2 = 2.0f * this->sigma_sq;
 
         GenerateSamples(n);
         rotateSamples();

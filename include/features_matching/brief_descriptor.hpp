@@ -34,10 +34,11 @@ class BRIEFDescriptor
 protected:
     int         	S;
     unsigned int    n;
-    float   		sigma2_2, sigma2;
+    float   		sigma_sq_2, sigma_sq;
     std::mt19937	*m;
 
-    int			*x, *y;
+    //samples coordinates
+    int             *x, *y;
 
     /**
      * @brief GenerateSample
@@ -48,7 +49,7 @@ protected:
         float theta = C_PI_2 * Random((*m)());
 
         float u = Random((*m)());
-        float r = sqrtf(MAX(-logf(u) * sigma2_2, 0.0f));
+        float r = sqrtf(MAX(-logf(u) * sigma_sq_2, 0.0f));
 
         sample[0] = int(r * cosf(theta));
         sample[1] = int(r * sinf(theta));
@@ -157,8 +158,8 @@ public:
         }
 
         this->S = S;
-        this->sigma2 = float(S * S) / 25.0f;
-        this->sigma2_2 = 2.0f * this->sigma2;
+        this->sigma_sq = float(S * S) / 25.0f;
+        this->sigma_sq_2 = 2.0f * this->sigma_sq;
 
         GenerateSamples(n);
     }
