@@ -41,8 +41,9 @@ public:
      */
     void SampleImage(Image *img, float x, float y, float *vOut)
     {
-        //	x = CLAMPi(x,0.0f,1.0f);
-        //	y = CLAMPi(y,0.0f,1.0f);
+        x = CLAMPi(x, 0.0f, 1.0f);
+        y = CLAMPi(y, 0.0f, 1.0f);
+
         //Coordiantes in [0,width-1]x[0,height-1]
         x *= img->width1f;
         y *= img->height1f;
@@ -72,8 +73,8 @@ public:
         //Integer coordinates
         int ix = int(xx);
         int iy = int(yy);
-        int ix1 = CLAMP(ix + 1, img->width);	//(ix+1)%img->width;
-        int iy1 = CLAMP(iy + 1, img->height);	//(iy+1)%img->height;
+        int ix1 = CLAMP(ix + 1, img->width);
+        int iy1 = CLAMP(iy + 1, img->height);
 
         //Bilinear interpolation indicies
         int t0 = iy  * img->width;
