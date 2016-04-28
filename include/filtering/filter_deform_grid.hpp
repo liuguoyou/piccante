@@ -76,7 +76,6 @@ public:
     ~FilterDeformGrid()
     {
         delete grid_rest;
-        delete grid_diff;
     }
 
     /**
