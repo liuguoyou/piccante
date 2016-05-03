@@ -21,6 +21,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "filtering/filter.hpp"
 #include "image_samplers/image_sampler_bicubic.hpp"
 #include "image_samplers/image_sampler_bilinear.hpp"
+#include "image_samplers/image_sampler_nearest.hpp"
 #include "util/vec.hpp"
 
 namespace pic {
@@ -32,7 +33,7 @@ class FilterDeformGrid: public Filter
 {
 protected:
     ImageSamplerBicubic isb;
-    ImageSamplerBilinear isb_lin;
+    ImageSamplerNearest isb_lin;
     Image *grid_rest, *grid_move, grid_diff;
 
     /**
