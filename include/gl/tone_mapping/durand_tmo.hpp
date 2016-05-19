@@ -135,7 +135,7 @@ public:
 
         float max_log_base, min_log_base;
 
-         if(bStatisticsRecompute || (min_log_base < -1e-6f)) {
+         if(bStatisticsRecompute || (min_log_base < -1e6f)) {
             img_lum_base->getMaxVal(&max_log_base);
             img_lum_base->getMinVal(&min_log_base);
          }
