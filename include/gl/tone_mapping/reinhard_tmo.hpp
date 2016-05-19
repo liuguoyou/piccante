@@ -58,7 +58,7 @@ public:
     /**
      * @brief ReinhardTMOGL
      */
-    ReinhardTMOGL(bool bStatisticsRecompute = false)
+    ReinhardTMOGL(bool bStatisticsRecompute = true)
     {
         flt_lum = NULL;
         flt_tmo_global = NULL;
