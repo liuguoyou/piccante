@@ -40,6 +40,9 @@ protected:
     FilterGLDurandTMO       *flt_durand;
     ImageGL                 *img_lum, *img_lum_base;
 
+    bool                    bStatisticsRecompute;
+    float                   min_log_base, max_log_base;
+
     /**
      * @brief AllocateFilters
      */
@@ -54,7 +57,7 @@ public:
     /**
      * @brief DurandTMOGL
      */
-    DurandTMOGL()
+    DurandTMOGL(bool bStatisticsRecompute = true)
     {
         flt_lum = NULL;
         flt_log10 = NULL;
@@ -64,6 +67,11 @@ public:
 
         flt_bil = NULL;
         flt_durand = NULL;
+
+        min_log_base = -1e10f;
+        max_log_base = -1e10f;
+
+        this->bStatisticsRecompute = bStatisticsRecompute;
     }
 
     ~DurandTMOGL()
@@ -127,8 +135,10 @@ public:
 
         float max_log_base, min_log_base;
 
-        img_lum_base->getMaxVal(&max_log_base);
-        img_lum_base->getMinVal(&min_log_base);
+         if(bStatisticsRecompute || (min_log_base < -1e-6f)) {
+            img_lum_base->getMaxVal(&max_log_base);
+            img_lum_base->getMinVal(&min_log_base);
+         }
 
         float compression_factor = log10fPlusEpsilon(target_contrast) / (max_log_base - min_log_base);
         float log_absoulte = compression_factor * max_log_base;

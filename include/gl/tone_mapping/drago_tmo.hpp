@@ -35,6 +35,8 @@ protected:
 
     ImageGL           *img_lum;
 
+    float              LMax, Lwa;
+    bool               bStatisticsRecompute;
     /**
      * @brief AllocateFilters
      */
@@ -48,11 +50,16 @@ public:
     /**
      * @brief DragoTMOGL
      */
-    DragoTMOGL()
+    DragoTMOGL(bool bStatisticsRecompute = true)
     {
         flt_lum = NULL;
         flt_tmo = NULL;
         img_lum = NULL;
+
+        LMax = -1.0f;
+        Lwa = -1.0f;
+
+        this->bStatisticsRecompute = bStatisticsRecompute;
     }
 
     ~DragoTMOGL()
@@ -94,9 +101,10 @@ public:
 
         img_lum = flt_lum->Process(SingleGL(imgIn), img_lum);
 
-        float LMax, Lwa;
-        img_lum->getMaxVal(&LMax);
-        img_lum->getLogMeanVal(&Lwa);
+        if(bStatisticsRecompute || (LMax < 0.0f)) {
+            img_lum->getMaxVal(&LMax);
+            img_lum->getLogMeanVal(&Lwa);
+        }
 
         flt_tmo->Update(Ld_Max, bias, LMax, Lwa);
         imgOut = flt_tmo->Process(DoubleGL(imgIn, img_lum), imgOut);
