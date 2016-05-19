@@ -85,7 +85,7 @@ public:
      * @param S
      * @param n
      */
-    ORBDescriptor(int S = 31, int n = 256, unsigned int seed = 0)
+    ORBDescriptor(int S = 31, int n = 256, unsigned int seed = 1)
     {
         m = new std::mt19937(seed);
 

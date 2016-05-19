@@ -54,7 +54,7 @@ public:
      */
     FilterBilateral2DS()
     {
-        seed = 0;
+        seed = 1;
         pg = NULL;
         ms = NULL;
     }
@@ -353,7 +353,7 @@ PIC_INLINE void FilterBilateral2DS::Init(SAMPLER_TYPE type, float sigma_s,
 
     ms = new MRSamplers<2>(type, pg->halfKernelSize, nSamples, 1, 64);
 
-    seed = 0;
+    seed = 1;
 }
 
 PIC_INLINE void FilterBilateral2DS::ProcessBBox(Image *dst, ImageVec src,

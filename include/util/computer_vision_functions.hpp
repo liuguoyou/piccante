@@ -131,7 +131,7 @@ Eigen::Matrix3d estimateHomography(std::vector< Eigen::Vector2f > points0, std::
  */
 Eigen::Matrix3d estimateHomographyRansac(std::vector< Eigen::Vector2f > points0, std::vector< Eigen::Vector2f > points1,
                                          std::vector< unsigned int > &inliers, unsigned int maxIterations = 100, double threshold = 4.0,
-                                         unsigned int seed = 0)
+                                         unsigned int seed = 1)
 {
     if(points0.size() < 5) {
         return estimateHomography(points0, points1);
@@ -301,7 +301,7 @@ Eigen::Matrix3d estimateFundamental(std::vector< Eigen::Vector2f > points0, std:
  */
 Eigen::Matrix3d estimateFundamentalRansac(std::vector< Eigen::Vector2f > points0, std::vector< Eigen::Vector2f > points1,
                                           std::vector< unsigned int > &inliers, unsigned int maxIterations = 100, double threshold = 0.01,
-                                          unsigned int seed = 0)
+                                          unsigned int seed = 1)
 {
     if(points0.size() < 9) {
         return estimateFundamental(points0, points1);

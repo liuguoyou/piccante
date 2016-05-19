@@ -1293,7 +1293,7 @@ PIC_INLINE void Image::SetZero()
     }
 }
 
-PIC_INLINE void Image::SetRand(unsigned int seed = 0)
+PIC_INLINE void Image::SetRand(unsigned int seed = 1)
 {
     if(!isValid()) {
         return;

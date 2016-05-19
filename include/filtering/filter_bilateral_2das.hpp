@@ -116,7 +116,7 @@ public:
 
 FilterBilateral2DAS::FilterBilateral2DAS()
 {
-    seed = 0;
+    seed = 1;
     pg = NULL;
     ms = NULL;
 }
@@ -141,7 +141,7 @@ FilterBilateral2DAS::FilterBilateral2DAS(SAMPLER_TYPE type, float sigma_s,
                                64);
     }
 
-    seed = 0;
+    seed = 1;
 }
 
 FilterBilateral2DAS::~FilterBilateral2DAS()

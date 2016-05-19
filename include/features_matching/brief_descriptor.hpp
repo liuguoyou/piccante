@@ -149,7 +149,7 @@ public:
      * @param S
      * @param n
      */
-    BRIEFDescriptor(int S = 32, int n = 256, int seed = 0)
+    BRIEFDescriptor(int S = 32, int n = 256, int seed = 1)
     {
         if(seed >= 0) {
             m = new std::mt19937(seed);

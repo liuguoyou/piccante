@@ -85,7 +85,8 @@ public:
                 double dy = y_cy / fy;
                 double rho_sq = dx * dx + dy * dy;
 
-                double factor = 1.0 + rho_sq * lambda;
+
+                double factor = 1.0 / (1.0 + rho_sq * lambda);
 
                 proj[0] = x_cx * factor + cx;
                 proj[1] = y_cy * factor + cy;
@@ -98,7 +99,9 @@ public:
             }
         }
 
-        err += 10.0f * lambda * lambda;
+        err /= p3d->size();
+
+        //err += 10.0f * lambda * lambda;
 
         return float(err);
     }

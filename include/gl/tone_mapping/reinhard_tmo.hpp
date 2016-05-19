@@ -38,6 +38,9 @@ protected:
     FilterGLOp         *simple_sigmoid, *simple_sigmoid_inv;
     ImageGL            *img_lum, *img_lum_adapt;
 
+    float              Lwa;
+    bool               bStatisticsRecompute;
+
     /**
      * @brief AllocateFilters
      */
@@ -55,7 +58,7 @@ public:
     /**
      * @brief ReinhardTMOGL
      */
-    ReinhardTMOGL()
+    ReinhardTMOGL(bool bStatisticsRecompute = false)
     {
         flt_lum = NULL;
         flt_tmo_global = NULL;
@@ -68,6 +71,10 @@ public:
         img_lum_adapt = NULL;
 
         filter = NULL;
+
+        Lwa = -1.0f;
+
+        this->bStatisticsRecompute = bStatisticsRecompute;
     }
 
     ~ReinhardTMOGL()
@@ -123,8 +130,9 @@ public:
 
         img_lum = flt_lum->Process(SingleGL(imgIn), img_lum);
 
-        float Lwa;
-        img_lum->getLogMeanVal(&Lwa);
+        if(bStatisticsRecompute || (Lwa < 0.0f)) {
+            img_lum->getLogMeanVal(&Lwa);
+        }
 
         flt_tmo_global->Update(alpha / Lwa);
         imgOut = flt_tmo_global->Process(DoubleGL(imgIn, img_lum), imgOut);

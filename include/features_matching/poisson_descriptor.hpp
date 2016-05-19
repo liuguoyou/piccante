@@ -111,7 +111,7 @@ public:
      * @brief PoissonDescriptor
      * @param kernelSize
      */
-    PoissonDescriptor(int kernelSize = 16, unsigned int seed = 0)
+    PoissonDescriptor(int kernelSize = 16, unsigned int seed = 1)
     {
         subBlock = 0;
         m = new std::mt19937(seed);
