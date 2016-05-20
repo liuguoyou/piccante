@@ -225,6 +225,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "point_samplers.hpp"
 #include "tone_mapping.hpp"
 #include "util.hpp"
+#include "computer_vision.hpp"
 
 #ifdef PIC_MAC_OS_X
 #pragma clang diagnostic pop

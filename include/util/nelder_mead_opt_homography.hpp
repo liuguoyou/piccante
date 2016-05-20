@@ -19,6 +19,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #define PIC_NELDER_MEAD_OPT_HOMOGRAPHY_HPP
 
 #include "util/nelder_mead_opt_base.hpp"
+#include "util/std_util.hpp"
 
 #ifndef PIC_DISABLE_EIGEN
    #include "externals/Eigen/Dense"

@@ -20,7 +20,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "util/matrix_3_x_3.hpp"
 #include "util/nelder_mead_opt_base.hpp"
-#include "util/computer_vision_functions.hpp"
+#include "computer_vision/camera_matrix.hpp"
 
 namespace pic {
 
