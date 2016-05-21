@@ -25,6 +25,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "util/math.hpp"
 
 #include "computer_vision/triangulation.hpp"
+#include "computer_vision/camera_matrix.hpp"
 
 #ifndef PIC_DISABLE_EIGEN
 #include "externals/Eigen/Dense"
