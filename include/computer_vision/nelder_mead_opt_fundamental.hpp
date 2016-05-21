@@ -15,8 +15,8 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 */
 
-#ifndef PIC_NELDER_MEAD_OPT_FUNDAMENTAL_HPP
-#define PIC_NELDER_MEAD_OPT_FUNDAMENTAL_HPP
+#ifndef PIC_COMPUTER_VISION_NELDER_MEAD_OPT_FUNDAMENTAL_HPP
+#define PIC_COMPUTER_VISION_NELDER_MEAD_OPT_FUNDAMENTAL_HPP
 
 #include "util/eigen_util.hpp"
 #include "util/matrix_3_x_3.hpp"
@@ -105,4 +105,4 @@ public:
 
 }
 
-#endif // PIC_NELDER_MEAD_OPT_FUNDAMENTAL_HPP
+#endif // PIC_COMPUTER_VISION_NELDER_MEAD_OPT_FUNDAMENTAL_HPP
