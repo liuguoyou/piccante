@@ -23,6 +23,8 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "gl/filtering/filter_bilateral_2ds.hpp"
 #include "gl/filtering/filter_op.hpp"
 
+#include "gl/filtering/filter_reinhard_single_pass.hpp"
+
 namespace pic {
 
 /**
@@ -40,6 +42,9 @@ protected:
 
     float              Lwa;
     bool               bStatisticsRecompute;
+    bool               bDomainChange;
+
+    FilterGLReinhardSinglePass *fTMO;
 
     /**
      * @brief AllocateFilters
@@ -73,6 +78,8 @@ public:
         filter = NULL;
 
         Lwa = -1.0f;
+
+        bDomainChange = true;
 
         this->bStatisticsRecompute = bStatisticsRecompute;
     }
@@ -160,8 +167,6 @@ public:
             AllocateFilters();
         }
 
-        bool bDomainChange = false;
-
         if(filter == NULL) {
             if(this->filter == NULL) {
 
@@ -174,14 +179,19 @@ public:
                 this->filter = new FilterGLBilateral2DS(sigma_s, sigma_r);
             }
 
-            bDomainChange = true;
             filter = this->filter;
+
+            fTMO = new FilterGLReinhardSinglePass(alpha, phi);
         }
 
         img_lum = flt_lum->Process(SingleGL(imgIn), img_lum);
 
-        float Lwa;
-        img_lum->getLogMeanVal(&Lwa);
+        if(bStatisticsRecompute || (Lwa < 0.0f)) {
+            img_lum->getLogMeanVal(&Lwa);
+            fTMO->Update(-1.0f, -1.0f, Lwa);
+        }
+
+        /*
 
         if(bDomainChange) {
             img_lum_adapt = simple_sigmoid->Process(SingleGL(img_lum), img_lum_adapt);
@@ -193,6 +203,9 @@ public:
 
         flt_tmo_local->Update(alpha / Lwa);
         imgOut = flt_tmo_local->Process(DoubleGL(imgIn, img_lum_adapt), imgOut);
+        */
+
+        imgOut = fTMO->Process(DoubleGL(imgIn, img_lum), imgOut);
 
         return imgOut;
     }
