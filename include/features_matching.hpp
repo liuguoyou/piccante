@@ -42,7 +42,8 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "features_matching/motion_estimation.hpp"
 
 //bruteforce feature matcher
-#include "features_matching/brute_force_feature_matcher_binary.hpp"
+#include "features_matching/binary_feature_brute_force_matcher.hpp"
+#include "features_matching/binary_feature_lsh_matcher.hpp"
 
 #endif /* PIC_FEATURES_MATCHING_HPP */
 

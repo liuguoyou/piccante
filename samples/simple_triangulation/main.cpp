@@ -1,4 +1,4 @@
-/*
+ /*
 
 PICCANTE
 The hottest HDR imaging library!
@@ -25,6 +25,32 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #define EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 
 #include "piccante.hpp"
+
+Eigen::Vector2i Projection(Eigen::Matrix34d &M, Eigen::Vector3d p, double cx, double cy, double fx, double fy, double lambda)
+{
+    Eigen::Vector4d p_t = Eigen::Vector4d(p[0], p[1], p[2], 1.0);
+    Eigen::Vector2i out;
+    Eigen::Vector3d proj = M * p_t;
+    proj[0] /= proj[2];
+    proj[1] /= proj[2];
+
+    double x_cx =  (proj[0] - cx);
+    double y_cy =  (proj[1] - cy);
+
+    double dx = x_cx / fx;
+    double dy = y_cy / fy;
+    double rho_sq = dx * dx + dy * dy;
+
+    double factor = 1.0 / (1.0 + rho_sq * lambda);
+
+    proj[0] = x_cx * factor + cx;
+    proj[1] = y_cy * factor + cy;
+
+    out[0] = int(proj[0]);
+    out[1] = int(proj[1]);
+
+    return out;
+}
 
 int main(int argc, char *argv[])
 {
@@ -94,7 +120,10 @@ int main(int argc, char *argv[])
 
         printf("Descriptor size: %d\n", n);
 
-        pic::BruteForceFeatureMatcherBinary bffm_bin(&descs1, n);
+        //pic::BinaryFeatureBruteForceMatcher bffm_bin(&descs1, n);
+        pic::BinaryFeatureLSHMatcher bffm_bin(&descs1, n, 8, 8);
+
+
         for(unsigned int i = 0; i< descs0.size(); i++) {
             int matched_j;
             unsigned int dist_1;
@@ -187,12 +216,15 @@ int main(int argc, char *argv[])
 
         float lambda = 0.0f;
         float lambda_out;
-        nmRD.run(&lambda, 1, 1e-9f, 10000, &lambda_out);
+        nmRD.run(&lambda, 1, 1e-12f, 100000, &lambda_out);
         printf("Radial distortion lambda: %f\n", lambda_out);
 
+        double cx = 2592.0 / 2.0;
+        double cy = 1728.0 / 2.0;
         for(unsigned int i = 0; i < m0f.size(); i++) {
             //first image
-            Eigen::Vector2i proj0 = pic::cameraMatrixProject(M0, points_3d[i]);
+            Eigen::Vector2i proj0 = Projection(M0, points_3d[i], cx, cy, fx, fy, lambda_out);
+            //Eigen::Vector2i proj0 = pic::cameraMatrixProject(M0, points_3d[i]);
             float *tmp;
 
             tmp = imgOut0(int(m0f[i][0]), int(m0f[i][1]));
@@ -202,7 +234,8 @@ int main(int argc, char *argv[])
             tmp[0] = 1.0f;
 
             //second image
-            Eigen::Vector2i proj1 = pic::cameraMatrixProject(M1, points_3d[i]);
+            Eigen::Vector2i proj1 = Projection(M1, points_3d[i], cx, cy, fx, fy, lambda_out);
+            //Eigen::Vector2i proj1 = pic::cameraMatrixProject(M1, points_3d[i]);
 
             tmp = imgOut1(int(m1f[i][0]), int(m1f[i][1]));
             tmp[1] = 1.0f;

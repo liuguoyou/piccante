@@ -15,33 +15,33 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 */
 
-#ifndef PIC_BRUTE_FORCE_FEATURE_MATCHER_BINARY_HPP
-#define PIC_BRUTE_FORCE_FEATURE_MATCHER_BINARY_HPP
+#ifndef PIC_FEATURES_MATCHING_BINARY_FEATURE_BRUTE_FORCE_MATCHER
+#define PIC_FEATURES_MATCHING_BINARY_FEATURE_BRUTE_FORCE_MATCHER
 
 #include <vector>
 
 namespace pic{
 
 /**
- * @brief The BruteForceFeatureMatcherBinary class
+ * @brief The BinaryFeatureBruteForceMatcher class
  */
-class BruteForceFeatureMatcherBinary
+class BinaryFeatureBruteForceMatcher
 {
 protected:
 
     std::vector<unsigned int *> *descs;
-    unsigned int n;
+    unsigned int desc_size;
 
 public:
 
     /**
-     * @brief BruteForceFeatureMatcherBinary
+     * @brief BinaryFeatureBruteForceMatcher
      * @param descs
      * @param n
      */
-    BruteForceFeatureMatcherBinary(std::vector<unsigned int *> *descs, unsigned int n)
+    BinaryFeatureBruteForceMatcher(std::vector<unsigned int *> *descs, unsigned int desc_size)
     {
-        this->n = n;
+        this->desc_size = desc_size;
         this->descs = descs;
     }
 
@@ -61,7 +61,7 @@ public:
         matched_j = -1;
 
         for(unsigned int j = 0; j < descs->size(); j++) {
-            unsigned int dist = BRIEFDescriptor::match(desc, descs->at(j), n);
+            unsigned int dist = BRIEFDescriptor::match(desc, descs->at(j), desc_size);
 
             if(dist > 0) {
                 if(dist > dist_1) {
@@ -75,10 +75,11 @@ public:
                 }
             }
         }
+
         return ((dist_1 * 100 > dist_2 * 105) && matched_j != -1);
     }
 };
 
 }
 
-#endif // PIC_BRUTE_FORCE_FEATURE_MATCHER_BINARY_HPP
+#endif // PIC_FEATURES_MATCHING_BINARY_FEATURE_BRUTE_FORCE_MATCHER
