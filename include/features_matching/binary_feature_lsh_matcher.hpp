@@ -89,14 +89,16 @@ public:
      */
     bool getMatch(unsigned int *desc, int &matched_j, unsigned int &dist_1)
     {
+        unsigned int dist_2 = 0;
+
         dist_1 = 0;
         matched_j = -1;
 
         for(unsigned int i=0; i<tables.size(); i++) {
-            tables[i]->getNearest(desc, matched_j, dist_1);
+            tables[i]->getNearest(desc, matched_j, dist_1, dist_2);
         }
 
-        return true;
+        return (matched_j != -1); //(dist_1 * 100 > dist_2 * 105)
     }
 };
 

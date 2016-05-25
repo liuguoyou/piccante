@@ -87,7 +87,7 @@ public:
         return address;
     }
 
-    void getNearest(unsigned int * desc, int &matched_j, unsigned int &dist_1)
+    void getNearest(unsigned int * desc, int &matched_j, unsigned int &dist_1, unsigned int &dist_2)
     {
         unsigned int address = getAddress(desc);
 
@@ -95,9 +95,16 @@ public:
             unsigned int j = table[address].at(i);
             unsigned int dist = BRIEFDescriptor::match(desc, descs->at(j), desc_size);
 
-            if(dist > dist_1) {
-                dist_1 = dist;
-                matched_j = j;
+            if(dist > 0) {
+                if(dist > dist_1) {
+                    dist_2 = dist_1;
+                    dist_1 = dist;
+                    matched_j = j;
+                } else {
+                    if(dist > dist_2) {
+                        dist_2 = dist;
+                    }
+                }
             }
         }
     }
