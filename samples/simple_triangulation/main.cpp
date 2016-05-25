@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        printf("Mathces:\n");
+        printf("Matches:\n");
         std::vector< Eigen::Vector2f > m0, m1;
 
         for(unsigned int i=0; i<matches.size(); i++) {
