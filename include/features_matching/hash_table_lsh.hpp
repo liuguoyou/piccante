@@ -95,15 +95,13 @@ public:
             unsigned int j = table[address].at(i);
             unsigned int dist = BRIEFDescriptor::match(desc, descs->at(j), desc_size);
 
-            if(dist > 0) {
-                if(dist > dist_1) {
-                    dist_2 = dist_1;
-                    dist_1 = dist;
-                    matched_j = j;
-                } else {
-                    if(dist > dist_2) {
-                        dist_2 = dist;
-                    }
+            if(dist > dist_1) {
+                dist_2 = dist_1;
+                dist_1 = dist;
+                matched_j = j;
+             } else {
+                if(dist > dist_2) {
+                    dist_2 = dist;
                 }
             }
         }
