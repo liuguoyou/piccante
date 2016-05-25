@@ -52,12 +52,12 @@ public:
     {
         NelderMeadOptTestFunction test(1.0f, 100.0f);
 
-        std::mt19937 rnd(0);
+        std::mt19937 rnd(1);
         float start[2];
         for(int i = 0; i < 1000; i++) {
 
-            start[0] = float(rnd()%1000) * 0.003f;
-            start[1] = float(rnd()%1000) * 0.002f;
+            start[0] = float(rnd() % 1000) * 0.003f;
+            start[1] = float(rnd() % 1000) * 0.002f;
 
             float *sol = test.run(start, 2, 1e-12f, 10000);
             printf("x: %f y: %f f: %f\n", sol[0], sol[1], test.function(sol, 2));
