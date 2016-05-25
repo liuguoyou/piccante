@@ -120,8 +120,8 @@ int main(int argc, char *argv[])
 
         printf("Descriptor size: %d\n", n);
 
-        //pic::BinaryFeatureBruteForceMatcher bffm_bin(&descs1, n);
-        pic::BinaryFeatureLSHMatcher bffm_bin(&descs1, n, 8, 8);
+        pic::BinaryFeatureBruteForceMatcher bffm_bin(&descs1, n);
+        //pic::BinaryFeatureLSHMatcher bffm_bin(&descs1, n, 8, 8);
 
 
         for(unsigned int i = 0; i< descs0.size(); i++) {
