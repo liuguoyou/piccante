@@ -44,6 +44,7 @@ public:
         if(hash_size == 0) {
             hash_size = 8;
         }
+        this->hash_size = hash_size;
 
         nTable = 1 << hash_size;
         table = new std::vector< unsigned int >[nTable];
@@ -52,6 +53,7 @@ public:
         this->g_f = g_f;
 
         //insert descriptors
+        this->descs = descs;
         this->desc_size = desc_size;
         size_ui = sizeof(unsigned int) * 8;
 
@@ -75,10 +77,10 @@ public:
             unsigned int block = pos / size_ui;
             unsigned int pos_block = pos % size_ui;
 
-            bool bit = (desc[block] >> pos_block) & 0x1;
+            unsigned int bit = (desc[block] >> pos_block) & 0x1;
 
-            if(bit) {
-                address += (1 << hash_size);
+            if(bit == 1) {
+                address += (1 << i);
             }
         }
 

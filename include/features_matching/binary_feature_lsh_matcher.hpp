@@ -41,16 +41,11 @@ public:
     {
         std::mt19937 m_rnd(1);
 
-        printf("C");
-
         for(unsigned int i=0; i < nTables; i++) {
-            printf("B");
-
             unsigned int n = desc_size * sizeof(unsigned int) * 8;
             unsigned int *g_f = getHash(m_rnd, n, hash_size);
             HashTableLSH *tmp = new HashTableLSH(hash_size, g_f, descs, desc_size);
             tables.push_back(tmp);
-            printf("A");
         }
     }
 
@@ -72,7 +67,7 @@ public:
         std::set<unsigned int> tmp;
 
         int c = 0;
-        while(tmp.size() < dim) {
+        while (tmp.size() < hash_size) {
             unsigned int val = m() % dim;
             auto result = tmp.insert(val);
 
