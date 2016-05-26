@@ -21,13 +21,14 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include <vector>
 
 #include "features_matching/hash_table_lsh.hpp"
+#include "features_matching/binary_feature_matcher.hpp"
 
 namespace pic {
 
 /**
  * @brief The LSH class
  */
-class BinaryFeatureLSHMatcher
+class BinaryFeatureLSHMatcher: public BinaryFeatureMatcher
 {
 protected:
     std::vector< HashTableLSH* > tables;
@@ -37,7 +38,7 @@ public:
     /**
      * @brief LSH
      */
-    BinaryFeatureLSHMatcher(std::vector< unsigned int *> *descs, unsigned int desc_size, unsigned int nTables = 8, unsigned int hash_size = 8)
+    BinaryFeatureLSHMatcher(std::vector< unsigned int *> *descs, unsigned int desc_size, unsigned int nTables = 16, unsigned int hash_size = 10) : BinaryFeatureMatcher(descs, desc_size)
     {
         std::mt19937 m_rnd(1);
 

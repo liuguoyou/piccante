@@ -20,18 +20,15 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <vector>
 
+#include "features_matching/binary_feature_matcher.hpp"
+
 namespace pic{
 
 /**
  * @brief The BinaryFeatureBruteForceMatcher class
  */
-class BinaryFeatureBruteForceMatcher
+class BinaryFeatureBruteForceMatcher : public BinaryFeatureMatcher
 {
-protected:
-
-    std::vector<unsigned int *> *descs;
-    unsigned int desc_size;
-
 public:
 
     /**
@@ -39,10 +36,8 @@ public:
      * @param descs
      * @param n
      */
-    BinaryFeatureBruteForceMatcher(std::vector<unsigned int *> *descs, unsigned int desc_size)
+    BinaryFeatureBruteForceMatcher(std::vector<unsigned int *> *descs, unsigned int desc_size) : BinaryFeatureMatcher(descs, desc_size)
     {
-        this->desc_size = desc_size;
-        this->descs = descs;
     }
 
     /**

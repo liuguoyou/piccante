@@ -120,17 +120,10 @@ int main(int argc, char *argv[])
 
         printf("Descriptor size: %d\n", n);
 
-        pic::BinaryFeatureBruteForceMatcher bffm_bin(&descs1, n);
-        //pic::BinaryFeatureLSHMatcher bffm_bin(&descs1, n, 8, 8);
+        //pic::BinaryFeatureBruteForceMatcher bffm_bin(&descs1, n);
+        pic::BinaryFeatureLSHMatcher bffm_bin(&descs1, n);
 
-
-        for(unsigned int i = 0; i< descs0.size(); i++) {
-            int matched_j;
-            unsigned int dist_1;
-            if(bffm_bin.getMatch(descs0.at(i), matched_j, dist_1)) {
-                matches.push_back(Eigen::Vector3i(i, matched_j, dist_1));
-            }
-        }
+        bffm_bin.getAllMatches(&descs0, matches);
 
         printf("Matches:\n");
         std::vector< Eigen::Vector2f > m0, m1;
