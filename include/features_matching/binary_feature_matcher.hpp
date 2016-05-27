@@ -30,6 +30,7 @@ class BinaryFeatureMatcher
 protected:
     std::vector<unsigned int *> *descs;
     unsigned int desc_size;
+    unsigned int R;
 
 public:
 
@@ -42,6 +43,7 @@ public:
     {
         this->desc_size = desc_size;
         this->descs = descs;
+        this->R = ((desc_size * sizeof(unsigned int) * 8) * 90) / 100;
     }
 
     /**

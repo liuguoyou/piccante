@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 
     printf("Ok\n");
 
-    printf("Are they both valid?");
+    printf("Are they both valid? ");
     if(img0.isValid() && img1.isValid()) {
         printf("OK\n");
 
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
         printf("Descriptor size: %d\n", n);
 
         //pic::BinaryFeatureBruteForceMatcher bffm_bin(&descs1, n);
-        pic::BinaryFeatureLSHMatcher bffm_bin(&descs1, n);
+        pic::BinaryFeatureLSHMatcher bffm_bin(&descs1, n, 64);
 
         bffm_bin.getAllMatches(&descs0, matches);
 

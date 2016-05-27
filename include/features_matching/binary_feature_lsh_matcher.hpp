@@ -38,7 +38,7 @@ public:
     /**
      * @brief LSH
      */
-    BinaryFeatureLSHMatcher(std::vector< unsigned int *> *descs, unsigned int desc_size, unsigned int nTables = 16, unsigned int hash_size = 10) : BinaryFeatureMatcher(descs, desc_size)
+    BinaryFeatureLSHMatcher(std::vector< unsigned int *> *descs, unsigned int desc_size, unsigned int nTables = 32, unsigned int hash_size = 8) : BinaryFeatureMatcher(descs, desc_size)
     {
         std::mt19937 m_rnd(1);
 
@@ -92,14 +92,14 @@ public:
     {
         unsigned int dist_2 = 0;
 
-        dist_1 = 0;
+        dist_1 = R;
         matched_j = -1;
 
         for(unsigned int i=0; i<tables.size(); i++) {
             tables[i]->getNearest(desc, matched_j, dist_1, dist_2);
         }
 
-        return (matched_j != -1); //(dist_1 * 100 > dist_2 * 105)
+        return (matched_j != -1);// && (dist_1 * 100 > dist_2 * 105);
     }
 };
 
