@@ -81,6 +81,8 @@ public:
 
         bDomainChange = true;
 
+        fTMO = NULL;
+
         this->bStatisticsRecompute = bStatisticsRecompute;
     }
 
@@ -167,6 +169,7 @@ public:
             AllocateFilters();
         }
 
+        /*
         if(filter == NULL) {
             if(this->filter == NULL) {
 
@@ -180,7 +183,10 @@ public:
             }
 
             filter = this->filter;
+        }
+        */
 
+        if(fTMO == NULL) {
             fTMO = new FilterGLReinhardSinglePass(alpha, phi);
         }
 

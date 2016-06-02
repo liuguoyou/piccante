@@ -86,7 +86,7 @@ FilterGLReinhardSinglePass::FilterGLReinhardSinglePass(float alpha, float phi = 
     this->sigma_r = sigma_r;
 
     //Precomputation of the Gaussian Kernel
-    int kernelSize = PrecomputedGaussian::KernelSize(sigma_s);//,sigma_r);
+    int kernelSize = PrecomputedGaussian::KernelSize(this->sigma_s);//,sigma_r);
     int halfKernelSize = kernelSize >> 1;
 
     //Random numbers
@@ -133,7 +133,7 @@ void FilterGLReinhardSinglePass::FragmentShader()
                                                   uniform float sigmar2;
                                                   uniform int kernelSize;
                                                   uniform float kernelSizef;
-                                                  uniform float alpha;
+                                                  uniform float a;
                                                   out     vec4  f_color;
 
     void main(void) {
@@ -153,7 +153,6 @@ void FilterGLReinhardSinglePass::FragmentShader()
             //Coordinates
             ivec3 coords = texelFetch(u_poisson, ivec2(i, shifter), 0).xyz;
 
-
             //Texture fetch
             float tmpCol = texelFetch(u_tex, coordsFrag.xy + coords.xy, 0).x;
             tmpCol = tmpCol / (tmpCol + 1.0);
@@ -169,18 +168,15 @@ void FilterGLReinhardSinglePass::FragmentShader()
 
         }
 
-
         float bilateral = weight > 0.0 ? (color / weight) : colRef;
         bilateral = bilateral / (1.0 - bilateral);
 
+        Lw = Lw < 1e-9 ? 1e-9 : Lw;
+        vec3 color_hdr = texelFetch(u_tex_col, coordsFrag, 0).xyz / Lw;
 
-        vec3 color_hdr = texelFetch(u_tex_col, coordsFrag, 0).xyz;
+        float Ld = (Lw * a) / (bilateral * a + 1.0);
 
-        float Ld = (Lw * alpha) / (bilateral * alpha + 1.0);
-
-        f_color = vec4(color_hdr * (Ld / Lw), 1.0);
-
-
+        f_color = vec4(color_hdr * Ld, 1.0);
     }
                                           );
 
@@ -210,7 +206,6 @@ void FilterGLReinhardSinglePass::InitShaders()
 void FilterGLReinhardSinglePass::Update(float sigma_s, float sigma_r, float Lwa)
 {
     bool flag = false;
-    this->Lwa = Lwa;
 
     if(sigma_s > 0.0f) {
         flag = (this->sigma_s == sigma_s);
@@ -220,6 +215,10 @@ void FilterGLReinhardSinglePass::Update(float sigma_s, float sigma_r, float Lwa)
     if(sigma_r > 0.0f) {
         flag = flag || (this->sigma_r == sigma_r);
         this->sigma_r = sigma_r;
+    }
+
+    if(Lwa > 0.0f) {
+        this->Lwa = Lwa;
     }
 
     int kernelSize = PrecomputedGaussian::KernelSize(this->sigma_s);
@@ -237,10 +236,10 @@ void FilterGLReinhardSinglePass::Update(float sigma_s, float sigma_r, float Lwa)
     filteringProgram.uniform("u_tex",       0);
     filteringProgram.uniform("u_poisson",   1);
     filteringProgram.uniform("u_rand",      2);
-    filteringProgram.uniform("u_tex_col",      3);
+    filteringProgram.uniform("u_tex_col",   3);
 
     filteringProgram.uniform("sigmas2",         sigmas2);
-    filteringProgram.uniform("alpha",           alpha / Lwa);
+    filteringProgram.uniform("a",               alpha / Lwa);
     filteringProgram.uniform("sigmar2",         sigmar2);
     filteringProgram.uniform("kernelSize",      kernelSize);
     filteringProgram.uniform("kernelSizef",     float(kernelSize));
