@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
         //Estimating the camera response function
         printf("Estimating the camera response function... ");
         pic::CameraResponseFunction crf;
-        crf.DebevecMalik(stack_vec, exposure_time_vec);
+        crf.DebevecMalik(stack_vec);
         printf("Ok.\n");
 
         printf("Assembling the different exposure images... ");

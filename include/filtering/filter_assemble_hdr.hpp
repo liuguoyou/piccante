@@ -60,6 +60,7 @@ protected:
                 index = j;
             }
         }        
+
         float max_val_saturation = 1.0f / t_min;
 
         for(int j = box->y0; j < box->y1; j++) {
@@ -87,7 +88,7 @@ protected:
                         float x_lin;
 
                         if(bFunction) {
-                            x_lin = Linearize(x, linearization_type, tmp_icrf);
+                            x_lin = CameraResponseFunction::RemoveCRF(x, linearization_type, tmp_icrf);
                         } else {
                             x_lin = x;
                         }

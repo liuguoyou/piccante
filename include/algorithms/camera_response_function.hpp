@@ -18,6 +18,15 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef PIC_ALGORITHMS_CAMERA_RESPONSE_FUNCTION_HPP
 #define PIC_ALGORITHMS_CAMERA_RESPONSE_FUNCTION_HPP
 
+#include "image.hpp"
+#include "point_samplers/sampler_random.hpp"
+#include "histogram.hpp"
+#include "filtering/filter_mean.hpp"
+
+#ifndef PIC_DISABLE_EIGEN
+    #include "externals/Eigen/SVD"
+#endif
+
 namespace pic {
 
 /**
@@ -84,52 +93,6 @@ inline float WeightFunction(float x, CRF_WEIGHT type)
 enum IMG_LIN {IL_LIN, IL_2_2, IL_LUT_8_BIT};
 
 /**
- * @brief Linearize removes a camera resposnse function to a value.
- * @param x is an intensity value in [0,1].
- * @param type describes how x values are encoded.
- * @param icrf is the inverse camera response function stored as
- * an array of values of 256 elements.
- * @return It returns x in the linear domain.
- */
-inline float Linearize(float x, IMG_LIN type, float *icrf = NULL)
-{
-    switch(type) {
-
-    case IL_LIN:{
-        return x;
-    }
-    break;
-
-    case IL_LUT_8_BIT:{
-        int index =  CLAMP(int(lround(x * 255.0f)), 256);
-        return icrf[index];
-    }
-    break;
-
-    case IL_2_2: {
-        return powf(x, 2.2f);
-    }
-    break;
-
-    }
-
-    return x;
-}
-
-} // end namespace pic
-
-#ifndef PIC_DISABLE_EIGEN
-
-#include "externals/Eigen/SVD"
-
-#include "image.hpp"
-#include "point_samplers/sampler_random.hpp"
-#include "histogram.hpp"
-#include "filtering/filter_mean.hpp"
-
-namespace pic {
-
-/**
  * @brief The CameraResponseFunction class
  */
 class CameraResponseFunction
@@ -142,6 +105,8 @@ protected:
     float *gsolve(unsigned char *samples, float *log_exposure, float lambda,
                   int nSamples, int nExposure)
     {
+        #ifndef Eg
+
         int n = 256;
         int rows = nSamples * nExposure + n + 1;
         int cols = n + nSamples;
@@ -192,6 +157,9 @@ protected:
         for(int i = 0; i < n; i++) {
             ret[i] = expf(x[i]);
         }
+        #elif
+            float *ret = NULL;
+        #endif
 
         return ret;
     }
@@ -356,9 +324,9 @@ public:
      * @param nSamples
      * @param lambda
      */
-    CameraResponseFunction(ImageVec stack, float *exposure, CRF_WEIGHT type = CW_DEB97, int nSamples = 100, float lambda = 10.0f)
+    CameraResponseFunction(ImageVec stack, CRF_WEIGHT type = CW_DEB97, int nSamples = 100, float lambda = 10.0f)
     {
-        DebevecMalik(stack, exposure, type, nSamples, lambda);
+        DebevecMalik(stack, type, nSamples, lambda);
     }
 
     ~CameraResponseFunction()
@@ -460,9 +428,9 @@ public:
      * @param nSamples
      * @param lambda
      */
-    void DebevecMalik(ImageVec stack, float *exposure, CRF_WEIGHT type = CW_DEB97, int nSamples = 100, float lambda = 10.0f)
+    void DebevecMalik(ImageVec stack, CRF_WEIGHT type = CW_DEB97, int nSamples = 100, float lambda = 10.0f)
     {
-        if( stack.empty() || (exposure == NULL) ) {
+        if(stack.empty()) {
             return;
         }
 
@@ -485,12 +453,12 @@ public:
             w[i] = WeightFunction(float(i) / 255.0f, type);
         }
 
-        int nExposure = stack.size();
+        unsigned int nExposure = stack.size();
 
         //log domain exposure time
         float *log_exposure = new float[nExposure];
-        for(int i = 0; i < nExposure; i++) {
-            log_exposure[i] = logf(exposure[i]);
+        for(unsigned int i = 0; i < nExposure; i++) {
+            log_exposure[i] = logf(stack[i]->exposure);
         }
 
         int stride = nSamples * nExposure;
@@ -521,20 +489,83 @@ public:
     /**
      * @brief MitsunagaNayar
      * @param stack
-     * @param exposure
      * @param polynomial_degree
      * @param nSamples
      */
-    void MitsunagaNayar(ImageVec stack, float *exposure, int polynomial_degree = 3, int nSamples = 100)
+    void MitsunagaNayar(ImageVec stack, int polynomial_degree = 3, int nSamples = 100)
     {
 
     }
 
     /**
-     * @brief Linearize linearizes the image signal applying the iCRF.
-     * @param img
+     * @brief RemoveCRF removes a camera resposnse function to a value.
+     * @param x is an intensity value in [0,1].
+     * @param type describes how x values are encoded.
+     * @param icrf is the inverse camera response function stored as
+     * an array of values of 256 elements.
+     * @return It returns x in the linear domain.
      */
-    void Linearize(Image *img)
+    static inline float RemoveCRF(float x, IMG_LIN type, float *icrf = NULL)
+    {
+        switch(type) {
+            case IL_LIN: {
+                return x;
+            }
+            break;
+
+            case IL_LUT_8_BIT: {
+                int index =  CLAMP(int(lround(x * 255.0f)), 256);
+                return icrf[index];
+            }
+            break;
+
+            case IL_2_2: {
+                return powf(x, 2.2f);
+            }
+            break;
+
+        }
+
+        return x;
+    }
+
+    /**
+     * @brief ApplyCRF
+     * @param x a value in [0, 1]
+     * @param type
+     * @param icrf
+     * @return
+     */
+    static inline float ApplyCRF(float x, IMG_LIN type, float *icrf = NULL)
+    {        
+        switch(type) {
+            case IL_LIN: {
+                return x;
+            }
+            break;
+
+            case IL_LUT_8_BIT: {
+                float *lower_ptr = std::lower_bound(&icrf[0], &icrf[255], x);
+                return float(lower_ptr - icrf - 1) / 255.0f;
+            }
+            break;
+
+            case IL_2_2: {
+                return powf(x, 1.0f / 2.2f);
+            }
+            break;
+
+        }
+
+        return x;
+    }
+
+    /**
+     * @brief Linearize
+     * @param img
+     * @param type
+     */
+    void Linearize(Image *img, IMG_LIN type = IL_LUT_8_BIT)
     {
         if(img == NULL) {
             return;
@@ -554,16 +585,43 @@ public:
         for(int i=0; i<img->size(); i += img->channels) {
             for(int j=0; j<img->channels; j++) {
                 int ind = i + j;
-                int index = CLAMP(int(lround(img->data[ind] * 255.0f)), 256);
-                img->data[ind] = icrf[j][index];
+                img->data[ind] = RemoveCRF(img->data[ind] , type, icrf[j]);
+            }
+        }
+    }
+
+    /**
+     * @brief ApplyCRF
+     * @param img
+     * @param type
+     */
+    void ApplyCRF(Image *img, IMG_LIN type = IL_LUT_8_BIT)
+    {
+        if(img == NULL) {
+            return;
+        }
+
+        if(!img->isValid()) {
+            return;
+        }
+
+        if(icrf.size() != img->channels) {
+        #ifdef PIC_DEBUG
+            printf("Warning: img cannot be linearized.\n");
+        #endif
+            return;
+        }
+
+        for(int i=0; i<img->size(); i += img->channels) {
+            for(int j=0; j<img->channels; j++) {
+                int ind = i + j;
+                img->data[ind] = ApplyCRF(img->data[ind] , type, icrf[j]);
             }
         }
     }
 };
 
 } // end namespace pic
-
-#endif
 
 #endif /* PIC_ALGORITHMS_CAMERA_RESPONSE_FUNCTION_HPP */
 

@@ -2067,6 +2067,7 @@ PIC_INLINE Image *Image::AllocateSimilarOne()
 PIC_INLINE Image *Image::Clone() const
 {
     Image *ret = new Image(frames, width, height, channels);
+
     ret->flippedEXR = flippedEXR;
     ret->exposure = exposure;
     ret->nameFile = nameFile;
@@ -2074,6 +2075,7 @@ PIC_INLINE Image *Image::Clone() const
     ret->typeLoad = typeLoad;
 
     memcpy(ret->data, data, width * height * channels * sizeof(float));
+
     return ret;
 }
 
