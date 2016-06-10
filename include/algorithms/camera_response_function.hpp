@@ -222,7 +222,7 @@ protected:
                     float *bin_c = h[ind].getCumulativef();
                     
                     float *ptr = std::upper_bound(&bin_c[0], &bin_c[255], u);
-                    int offset = CLAMPi((int)(ptr - bin_c - 1), 0, 255);
+                    int offset = CLAMPi((int)(ptr - bin_c), 0, 255);
 
                     samples[c] = offset;
                     c++;
