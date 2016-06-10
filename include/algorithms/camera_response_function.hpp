@@ -428,14 +428,14 @@ public:
      * @param nSamples
      * @param lambda
      */
-    void DebevecMalik(ImageVec stack, CRF_WEIGHT type = CW_DEB97, int nSamples = 100, float lambda = 10.0f)
+    void DebevecMalik(ImageVec stack, CRF_WEIGHT type = CW_DEB97, int nSamples = 256, float lambda = 20.0f)
     {
         if(stack.empty()) {
             return;
         }
 
         if(nSamples < 1) {
-            nSamples = 100;
+            nSamples = 256;
         }
 
         icrf.clear();
@@ -545,8 +545,9 @@ public:
             break;
 
             case IL_LUT_8_BIT: {
-                float *lower_ptr = std::lower_bound(&icrf[0], &icrf[255], x);
-                return float(lower_ptr - icrf - 1) / 255.0f;
+               float *ptr = std::upper_bound(&icrf[0], &icrf[255], x);
+                int offset = CLAMPi((int)(ptr - icrf - 1), 0, 255);
+                return float(offset) / 255.0f;
             }
             break;
 
@@ -575,7 +576,7 @@ public:
             return;
         }
 
-        if(icrf.size() != img->channels) {
+        if(type == IL_LUT_8_BIT && icrf.size() != img->channels) {
         #ifdef PIC_DEBUG
             printf("Warning: img cannot be linearized.\n");
         #endif
@@ -605,9 +606,9 @@ public:
             return;
         }
 
-        if(icrf.size() != img->channels) {
+        if(type == IL_LUT_8_BIT && icrf.size() != img->channels) {
         #ifdef PIC_DEBUG
-            printf("Warning: img cannot be linearized.\n");
+            printf("Warning: CRF cannot be applied to the image.\n");
         #endif
             return;
         }
