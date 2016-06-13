@@ -6,3 +6,4 @@
 *.png
 
 samples/build-tone_mapping-Desktop_Qt_5_3_0_clang_64bit-Debug/tone_mapping
+include/features_matching/binary_feature_matcher.hpp

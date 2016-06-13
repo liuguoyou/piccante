@@ -58,6 +58,7 @@ public:
         return false;
     }
 
+#ifndef PIC_DISABLE_EIGEN
     void getAllMatches(std::vector<unsigned int *> *descs0, std::vector< Eigen::Vector3i > &matches)
     {
         matches.clear();
@@ -71,6 +72,7 @@ public:
             }
         }
     }
+#endif
 };
 
 }
