@@ -545,8 +545,9 @@ public:
             break;
 
             case IL_LUT_8_BIT: {
-               float *ptr = std::upper_bound(&icrf[0], &icrf[255], x);
-                int offset = CLAMPi((int)(ptr - icrf - 1), 0, 255);
+                float *ptr = std::lower_bound(&icrf[0], &icrf[255], x);
+                int offset = CLAMPi((int)(ptr - icrf), 0, 255);
+
                 return float(offset) / 255.0f;
             }
             break;

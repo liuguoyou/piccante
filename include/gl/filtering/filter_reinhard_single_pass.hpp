@@ -30,7 +30,7 @@ namespace pic {
 class FilterGLReinhardSinglePass: public FilterGL
 {
 protected:
-    float sigma_s, sigma_r;
+    float sigma_s, sigma_r, sigmoid_constant;
     MRSamplersGL<2> *ms;
 
     //tmo
@@ -78,8 +78,10 @@ FilterGLReinhardSinglePass::FilterGLReinhardSinglePass(float alpha, float phi = 
 
     float epsilon = 0.05f;
     float s_max = 8.0f;
-    float sigma_s = 0.56f * powf(1.6f, s_max);
-    float sigma_r = (powf(2.0f, phi) * alpha / (s_max * s_max)) * epsilon;
+    float sigma_s = 1.6f;
+    float sigma_r = epsilon / 2.0f;
+
+    this->sigmoid_constant = (powf(2.0f, phi) * alpha / (s_max * s_max)) * epsilon;
 
     //protected values are assigned/computed
     this->sigma_s = sigma_s;
@@ -129,6 +131,7 @@ void FilterGLReinhardSinglePass::FragmentShader()
                                                   uniform isampler2D u_poisson;
                                                   uniform sampler2D  u_rand;
                                                   uniform int   nSamples;
+                                                  uniform float sigmoid_constant;
                                                   uniform float sigmas2;
                                                   uniform float sigmar2;
                                                   uniform int kernelSize;
@@ -142,7 +145,7 @@ void FilterGLReinhardSinglePass::FragmentShader()
         float colRef = texelFetch(u_tex, coordsFrag, 0).x;
         float Lw = colRef;
 
-        colRef = colRef / (colRef + 1.0);
+        colRef = colRef / (colRef + sigmoid_constant);
 
 
         float shifter = texture(u_rand, gl_FragCoord.xy).x;
@@ -155,7 +158,7 @@ void FilterGLReinhardSinglePass::FragmentShader()
 
             //Texture fetch
             float tmpCol = texelFetch(u_tex, coordsFrag.xy + coords.xy, 0).x;
-            tmpCol = tmpCol / (tmpCol + 1.0);
+            tmpCol = tmpCol / (tmpCol + sigmoid_constant);
 
             float tmpCol2 = tmpCol - colRef;
             float dstR = tmpCol2 * tmpCol2;
@@ -169,7 +172,7 @@ void FilterGLReinhardSinglePass::FragmentShader()
         }
 
         float bilateral = weight > 0.0 ? (color / weight) : colRef;
-        bilateral = bilateral / (1.0 - bilateral);
+        bilateral = (bilateral * sigmoid_constant) / (1.0 - bilateral);
 
         Lw = Lw < 1e-9 ? 1e-9 : Lw;
         vec3 color_hdr = texelFetch(u_tex_col, coordsFrag, 0).xyz / Lw;
@@ -240,6 +243,8 @@ void FilterGLReinhardSinglePass::Update(float sigma_s, float sigma_r, float Lwa)
 
     filteringProgram.uniform("sigmas2",         sigmas2);
     filteringProgram.uniform("a",               alpha / Lwa);
+    filteringProgram.uniform("sigmoid_constant", sigmoid_constant);
+
     filteringProgram.uniform("sigmar2",         sigmar2);
     filteringProgram.uniform("kernelSize",      kernelSize);
     filteringProgram.uniform("kernelSizef",     float(kernelSize));
