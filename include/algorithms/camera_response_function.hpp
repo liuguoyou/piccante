@@ -105,7 +105,7 @@ protected:
     float *gsolve(unsigned char *samples, float *log_exposure, float lambda,
                   int nSamples, int nExposure)
     {
-        #ifndef Eg
+		#ifndef PIC_DISABLE_EIGEN
 
         int n = 256;
         int rows = nSamples * nExposure + n + 1;
@@ -157,7 +157,7 @@ protected:
         for(int i = 0; i < n; i++) {
             ret[i] = expf(x[i]);
         }
-        #elif
+		#else
             float *ret = NULL;
         #endif
 
