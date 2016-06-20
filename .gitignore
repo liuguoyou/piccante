@@ -67,3 +67,5 @@ samples/data/input/triangulation/venice_campo_s_polo_left.jpg
 samples/opengl_tone_mapping/main.cpp
 
 samples/simple_deform_grid/main.cpp
+
+samples/build-opengl_tone_mapping-Desktop_Qt_5_3_0_clang_64bit-Release/opengl_tone_mapping
