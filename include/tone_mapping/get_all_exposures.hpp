@@ -119,7 +119,7 @@ ImageVec getAllExposuresImages(Image *imgIn)
 
     ImageVec input = Single(imgIn);
 
-    for(unsigned int i = 0; i < exposures.size(); i++) {
+    for(unsigned int i = 0; i < fstops.size(); i++) {
         flt.Update(2.2f, fstops[i]);
         Image *expo = flt.ProcessP(input, NULL);
 
