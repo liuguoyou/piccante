@@ -22,7 +22,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 namespace pic {
 
-enum LUMINANCE_TYPE{LT_CIE_LUMINANCE, LT_WARD_LUMINANCE, LT_MEAN};
+enum LUMINANCE_TYPE{LT_CIE_LUMINANCE, LT_WARD_LUMINANCE, LT_MEAN, LT_PASS_THROUGH};
 
 /**
  * @brief The FilterLuminance class
@@ -85,7 +85,8 @@ protected:
             }
         }
 
-        if( (weights_size != imgIn[0]->channels) && (type == LT_MEAN) )
+        bool bChannels = (weights_size != imgIn[0]->channels);
+        if( bChannels && (type == LT_MEAN) )
         {
             weights_size = imgIn[0]->channels;
 
@@ -97,6 +98,13 @@ protected:
 
             for(int i=0; i<imgIn[0]->channels; i++) {
                 weights[i] = 1.0f / float( imgIn[0]->channels );
+            }
+        } else {
+            if(bChannels) {
+                weights = new float [1];
+                weights[0] = 1.0f;
+
+                type = LT_PASS_THROUGH;
             }
         }
 
