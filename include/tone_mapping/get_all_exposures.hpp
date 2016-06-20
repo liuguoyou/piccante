@@ -113,14 +113,14 @@ ImageVec getAllExposuresImages(Image *imgIn)
 {
     ImageVec ret;
 
-    std::vector<float> exposures = getAllExposures(imgIn);
+    std::vector<float> fstops = getAllExposures(imgIn);
 
     FilterSimpleTMO flt(1.0f, 0.0f);
 
     ImageVec input = Single(imgIn);
 
     for(unsigned int i = 0; i < exposures.size(); i++) {
-        flt.Update(2.2f, exposures[i]);
+        flt.Update(2.2f, fstops[i]);
         Image *expo = flt.ProcessP(input, NULL);
 
         ret.push_back(expo);
