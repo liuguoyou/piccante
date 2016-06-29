@@ -47,11 +47,30 @@ inline float WeightFunction(float x, CRF_WEIGHT type)
     case CW_GAUSS: {
         float sigma = 0.5f;
         float mu = 0.5f;
-        float sigma_2 = 2.0f * (sigma * sigma);
-        float tmp = (x - mu);
-        return expf(-4.0f * (tmp * tmp) / sigma_2);
+        float sigma_sq_2 = 2.0f * (sigma * sigma);
+        float x_mu = (x - mu);
+        return expf(-4.0f * (x_mu * x_mu) / sigma_sq_2);
     }
     break;
+
+    case CW_ROBERTSON: {
+        float sigma = 0.5f;
+        float mu = 0.5f;
+        float mu_sq = mu * mu;
+        float sigma_sq_2 = 2.0f * (sigma * sigma);
+
+        float x_mu = (x - mu);
+
+        float y =  expf(-4.0f * (x_mu * x_mu) / sigma_sq_2);
+
+        float shift_val = expf(-4.0f * mu_sq / sigma_sq_2);
+        float scale_val = expf(0.0f);
+
+        y = (y - shift_val) / (scale_val - shift_val);
+        return  CLAMPi(y, 0.0f, 1.0f);
+    }
+    break;
+
 
     case CW_HAT: {
         float val = (2.0f * x - 1.0f);
