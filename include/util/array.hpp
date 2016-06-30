@@ -188,6 +188,34 @@ public:
     }
 
     /**
+     * @brief Apply
+     * @param vec
+     * @param ret
+     * @param size
+     * @return
+     */
+    static inline T* Apply(T *vec, T *ret, int size, T(*func)(T))
+    {
+        if(vec == NULL) {
+            return NULL;
+        }
+
+        if(size < 1) {
+            return NULL;
+        }
+
+        if(ret == NULL) {
+            ret = new T[size];
+        }
+
+        for(int i = 1; i < size; i++) {
+            ret[i] = func(vec[i]);
+        }
+
+        return ret;
+    }
+
+    /**
      * @brief getMax
      * @param vec
      * @param size

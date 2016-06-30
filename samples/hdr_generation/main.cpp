@@ -59,11 +59,12 @@ int main(int argc, char *argv[])
         //Estimating the camera response function
         printf("Estimating the camera response function... ");
         pic::CameraResponseFunction crf;
+
         crf.DebevecMalik(stack_vec);
         printf("Ok.\n");
 
         printf("Assembling the different exposure images... ");
-        pic::FilterAssembleHDR merger(pic::CW_DEB97, pic::HRD_LOG, pic::IL_LUT_8_BIT, &crf.icrf);
+        pic::FilterAssembleHDR merger(&crf, pic::CW_DEB97, pic::HRD_LOG);
         pic::Image *imgOut = merger.ProcessP(stack_vec, NULL);
 
         printf("Ok\n");
