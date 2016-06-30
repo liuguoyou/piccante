@@ -60,9 +60,6 @@ protected:
         }        
 
         float *max_val_saturation = new float[channels];
-        for(unsigned int k = 0; k < channels; k++) {
-            max_val_saturation[k] = crf->Remove(1.0f, k); / t_min;
-        }
 
         for(int j = box->y0; j < box->y1; j++) {
             int ind = j * width;
@@ -71,6 +68,8 @@ protected:
 
                 //Assembling kernel
                 int c = (ind + i) * channels;
+
+                bool bSaturated = false;
 
                 for(int k = 0; k < channels; k++) {
                     float weight_norm = 0.0f;
@@ -83,6 +82,11 @@ protected:
 
                         float x_lin = crf->Remove(x, k);
 
+                        if(l == index) {
+                            max_val_saturation[k] = x_lin / src[l]->exposure;
+                        }
+
+                        //assembling domain
                         switch(domain) {
                             case HRD_LIN: {
                                 acc += (weight * x_lin) / src[l]->exposure;
@@ -101,17 +105,17 @@ protected:
                         if(domain == HRD_LOG) {
                             acc = expf(acc);
                         }
+                        dst->data[c + k] = acc;
+
                     } else {
-                        if(src[index]->data[c + k] < 0.5f) {
-                            acc = 0.0f;
-                        }
-
-                        if(src[index]->data[c + k] > 0.9f) {
-                            acc = max_val_saturation[k];
-                        }
+                        bSaturated = true;
                     }
+                }
 
-                    dst->data[c + k] = acc;
+                if(bSaturated) {
+                    for(int k = 0; k < channels; k++) {
+                        dst->data[c + k] = max_val_saturation[k];
+                    }
                 }
             }
         }
@@ -135,6 +139,7 @@ public:
 
         this->domain = domain;
 
+        //a numerical stability value when assembling images in the log-domain
         this->delta_value = 1.0 / 65536.0f;
     }
 };
