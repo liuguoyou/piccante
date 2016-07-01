@@ -23,7 +23,7 @@ namespace pic {
 /**
  * @brief The CRF_WEIGHT enum
  */
-enum CRF_WEIGHT {CW_ALL, CW_HAT, CW_DEB97, CW_DEB97p01, CW_ROBERTSON, CW_GAUSS};
+enum CRF_WEIGHT {CW_ALL, CW_HAT, CW_DEB97, CW_DEB97p01, CW_ROBERTSON};
 
 /**
  * @brief WeightFunction computes weight functions for x in [0,1].
@@ -35,30 +35,13 @@ inline float WeightFunction(float x, CRF_WEIGHT type)
 {
     switch(type) {
 
-    case CW_GAUSS: {
-        float sigma = 0.5f;
-        float mu = 0.5f;
-        float sigma_sq_2 = 2.0f * (sigma * sigma);
-        float x_mu = (x - mu);
-        return expf(-4.0f * (x_mu * x_mu) / sigma_sq_2);
-    }
-    break;
-
     case CW_ROBERTSON: {
-        float sigma = 0.5f;
-        float mu = 0.5f;
-        float mu_sq = mu * mu;
-        float sigma_sq_2 = 2.0f * (sigma * sigma);
-
-        float x_mu = (x - mu);
-
-        float y =  expf(-4.0f * (x_mu * x_mu) / sigma_sq_2);
-
-        float shift_val = expf(-4.0f * mu_sq / sigma_sq_2);
-        //float scale_val = expf(0.0f); --> 1.0
-
-        y = (y - shift_val) / (1.0f - shift_val);
-        return  CLAMPi(y, 0.0f, 1.0f);
+        // w(x) = exp(-4*(x - 127.5)^2/(127.5)^2) = exp(-16.0 * (x/255.0 - 0.5)^2)
+        // (according to the paper it should be scaled and shifted s.t. w(0) = w(255) = 0 and w(127.5) = 1)
+        static const double shift    = exp(-4);
+        static const double scaleDiv = (1.0 - shift);
+        const double t = x - 0.5;
+        return (exp(-16.0 * (t * t) ) - shift) / scaleDiv;
     }
     break;
 
