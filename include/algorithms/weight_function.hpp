@@ -36,7 +36,7 @@ inline float WeightFunction(float x, CRF_WEIGHT type)
     switch(type) {
 
     case CW_ROBERTSON: {
-        // w(x) = exp(-4*(x - 127.5)^2/(127.5)^2) = exp(-16.0 * (x/255.0 - 0.5)^2)
+        // w(x) = exp(-4*(x*255 - 127.5)^2/(127.5)^2) = exp(-16.0 * (x - 0.5)^2)
         // (according to the paper it should be scaled and shifted s.t. w(0) = w(255) = 0 and w(127.5) = 1)
         static const double shift    = exp(-4);
         static const double scaleDiv = (1.0 - shift);
