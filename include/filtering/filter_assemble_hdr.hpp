@@ -145,7 +145,7 @@ public:
      * @param linearization_type
      * @param icrf
      */
-    FilterAssembleHDR(CameraResponseFunction *crf, CRF_WEIGHT weight_type = CW_GAUSS, HDR_REC_DOMAIN domain = HRD_LOG)
+    FilterAssembleHDR(CameraResponseFunction *crf, CRF_WEIGHT weight_type = CW_ROBERTSON, HDR_REC_DOMAIN domain = HRD_LOG)
     {        
         this->crf = crf;
 
