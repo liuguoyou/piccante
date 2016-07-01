@@ -24,7 +24,16 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 namespace pic {
 
-enum HDR_REC_DOMAIN {HRD_LOG, HRD_LIN};
+/**
+ * @brief The HDR_REC_DOMAIN enum
+ * HRD_LOG: assembling HDR image in the log-domain
+
+ * HRD_LIN: assembling HDR image in the linear domain
+ *
+ * HRD_SQ: assembling HDR image in the linear domain with t^2 trick
+ * for reducing noise [Robertson et al.]
+ */
+enum HDR_REC_DOMAIN {HRD_LOG, HRD_LIN, HRD_SQ};
 
 /**
  * @brief The FilterAssembleHDR class
@@ -94,6 +103,11 @@ protected:
 
                             case HRD_LOG: {
                                 acc += weight * (logf(x_lin + delta_value) - logf(src[l]->exposure + delta_value));
+                            } break;
+
+                            case HRD_SQ: {
+                                acc += (weight * x_lin) * src[l]->exposure;
+                                weight *= (src[l]->exposure * src[l]->exposure);
                             } break;
                         }
 
