@@ -376,6 +376,310 @@ public:
     void MitsunagaNayar(ImageVec stack, int polynomial_degree = 3, int nSamples = 100)
     {
     }
+
+    /**
+     * @brief Robertson computes the CRF of a camera using all multiple exposures value Robertson et al
+       1999's method (Dynamic range improvement through multiple exposures).
+     * @param stack
+     * @param maxIterations
+     */
+    void Robertson(const ImageVec stack, const size_t maxIterations = 50)
+    {
+        // checks
+        if (stack.size() < 2) {
+            return;
+        }
+
+        for (size_t i=1; i<stack.size(); i++)
+        {
+            if (!stack[0]->SimilarType(stack[i]))
+                return;
+        }
+
+        this->Destroy();
+        this->icrf.clear();
+        this->type_linearization = IL_LUT_8_BIT;
+
+        const int channels   = stack[0]->channels;
+        const int pixelcount = stack[0]->nPixels();
+
+        // precompute robertson weighting function
+        for (size_t i=0; i<256; i++)
+        {
+            this->w[i] = pic::WeightFunction(i/255.0, pic::CW_ROBERTSON);
+        }
+
+        // avoid saturation
+        int minM = 0;
+        int maxM = 255;
+        for (int m=0; m<256; m++)
+        {
+            if (this->w[m] > 0)
+            {
+                minM = m;
+                break;
+            }
+        }
+        for (int m=255; m>=0; m--)
+        {
+            if (this->w[m] > 0)
+            {
+                maxM = m;
+                break;
+            }
+        }
+
+        // avoid ghosting (for each exposure get the index for the immediately higher and lower exposure)
+        int lower [stack.size()];
+        int higher[stack.size()];
+
+        for (size_t i=0; i<stack.size(); i++)
+        {
+            lower[i]  = -1;
+            higher[i] = -1;
+            float t = stack[i]->exposure;
+            float tHigh = stack[0]->exposure;;
+            float tLow  = tHigh;
+
+            for (size_t j=0; j<stack.size(); j++)
+            {
+                if (i != j)
+                {
+                    float tj = stack[j]->exposure;
+
+                    if (tj > t && tj < tHigh)
+                    {
+                        tHigh = tj;
+                        higher[i] = j;
+                    }
+                    if (tj < t && tj > tLow)
+                    {
+                        tLow = tj;
+                        lower[i] = j;
+                    }
+                }
+            }
+            if (lower[i]  == -1) lower[i]  = i;
+            if (higher[i] == -1) higher[i] = i;
+        }
+
+        // create initial inv response function
+        {
+            float * lin = new float[256];
+            for (int i=0; i<256; i++)
+            {
+                lin[i] = float(2.0 * i / 255.0);
+            }
+            this->icrf.push_back(lin);
+
+            for (int i=1; i<channels; i++)
+            {
+                float * col = new float[256];
+                BufferAssign(col, lin, 256);
+                this->icrf.push_back(col);
+            }
+        }
+
+        // create quantized stack
+        std::vector<unsigned char *> qstack;
+        for (Image * slice : stack)
+        {
+            assert(slice->frames == 1);
+            unsigned char * q = pic::ConvertHDR2LDR(slice->data, NULL, slice->size(), pic::LT_NOR);
+            qstack.push_back(q);
+        }
+
+        // iterative gauss-seidel
+        for (int ch=0; ch<channels; ch++)
+        {
+            float * fun = this->icrf[ch];
+            float funPrev[256];
+            BufferAssign(funPrev, fun, 256);
+
+            std::vector<float> x(pixelcount);
+
+            float prevDelta = 0.0f;
+            for (size_t iter=0; iter<maxIterations; iter++)
+            {
+                // Normalize inv crf to midpoint
+                {
+                    // find min max
+                    size_t minIdx, maxIdx;
+                    for (minIdx = 0   ; minIdx < 255 && fun[minIdx]==0 ; minIdx++);
+                    for (maxIdx = 255 ; maxIdx > 0   && fun[maxIdx]==0 ; maxIdx--);
+
+                    size_t midIdx = minIdx+(maxIdx-minIdx)/2;
+                    float  mid = fun[midIdx];
+
+                    if (mid == 0.0f)
+                    {
+                        // find first non-zero middle response
+                        while (midIdx < maxIdx && fun[midIdx] == 0.0f)
+                        {
+                            midIdx++;
+                        }
+                        mid = fun[midIdx];
+                    }
+
+                    if (mid != 0.0f)
+                    {
+                        BufferDiv(fun, 256, mid);
+                    }
+                }
+
+                // Update x
+                for (int i=0; i<pixelcount; i++)
+                {
+                    float sum     = 0.0f;
+                    float divisor = 0.0f;
+
+                    float maxt = -1.0f;
+                    float mint = FLT_MAX;
+
+                    int ind = i * channels + ch;
+
+                    for (size_t s=0; s<qstack.size(); s++)
+                    {
+                        unsigned char * qslice = qstack[s];
+                        const float     t      = stack[s]->exposure;
+
+                        int m = qslice[ind];
+
+                        // compute max/min time for under/over exposed pixels
+                        if (m > maxM)
+                            mint = std::min(mint, t);
+                        if (m < minM)
+                            maxt = std::max(maxt, t);
+
+                        // to avoid ghosting
+                        int mLow  = qstack[lower [s]][ind];
+                        int mHigh = qstack[higher[s]][ind];
+                        if (mLow > m || mHigh < m)
+                        {
+                            continue;
+                        }
+
+                        const float wm = this->w[m];
+
+                        sum     += wm * t * fun[m];
+                        divisor += wm * t * t;
+                    }
+
+                    if (divisor == 0.0f)
+                    {
+                        // avoid saturation
+                        if (maxt > -1.0f)
+                        {
+                            x[i] = fun[minM]/maxt;
+                        }
+                        if (mint < FLT_MAX)
+                        {
+                            x[i] = fun[maxM]/mint;
+                        }
+                    } else if (divisor < 1e-4f) {
+                        x[i] = -1.0f;
+                    } else {
+                        x[i] = sum/divisor;
+                    }
+                }
+
+                // Update inv crf
+                {
+                    size_t cardEm[256] = { 0 };
+                    float  sum[256]    = { 0.0f };
+                    float minSatTime = FLT_MAX;
+                    for (size_t s=0; s<qstack.size(); s++)
+                    {
+                        unsigned char * qslice = qstack[s];
+                        const float     t      = stack[s]->exposure;
+
+                        for (int i=0; i<pixelcount; i++)
+                        {
+                            if (x[i] < 0.0f)
+                            {
+                                continue;
+                            }
+                            const int m = int(qslice[i*channels+ch]);
+                            if (m == 255)
+                            {
+                                if (t < minSatTime)
+                                {
+                                    minSatTime = t;
+                                    sum[m] = t * x[i];
+                                    cardEm[m] = 1;
+                                }
+                                else if (t == minSatTime)
+                                {
+                                    sum[m] = std::min(sum[m], t * x[i]);
+                                }
+                            }
+                            else
+                            {
+                                sum[m] += t * x[i];
+                                cardEm[m]++;
+                            }
+                        }
+                    }
+
+                    // compute average and fill undefined values with previous one
+                    float prev = 0.0f;
+                    for (int m=0; m<256; m++)
+                    {
+                        if (cardEm[m] != 0) {
+                            fun[m] = prev = sum[m] / cardEm[m];
+                        } else {
+                            fun[m] = prev;
+                        }
+                    }
+                }
+
+                // check residuals
+                {
+                    static const float MaxDelta = 1e-7f;
+
+                    float delta = 0.0f;
+                    int count   = 0;
+                    for (int m=0; m<256; m++)
+                    {
+                        if( fun[m] != 0.0f )
+                        {
+                            float diff = fun[m] - funPrev[m];
+                            delta += diff * diff;
+                            funPrev[m] = fun[m];
+                            count++;
+                        }
+                    }
+                    delta /= count;
+
+                    if (delta < MaxDelta) {
+                        break;
+                    }
+
+                    prevDelta = delta;
+                }
+            }
+        }
+        // estimation complete!
+
+        // normalize response function keeping relative scale between colors
+        float maxV = -1.0f;
+        for (int ch=0; ch<channels; ch++)
+        {
+            int ind;
+            maxV = std::max(pic::Array<float>::getMax(this->icrf[ch], 256, ind), maxV);
+        }
+        for (int ch=0; ch<channels; ch++)
+        {
+            BufferDiv(this->icrf[ch], 256, maxV);
+            this->icrf[ch][255] = 1.0f;
+        }
+
+        // clean quantized stack
+        for (unsigned char * qslice : qstack)
+        {
+            delete qslice;
+        }
+    }
 };
 
 } // end namespace pic

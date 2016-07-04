@@ -105,7 +105,7 @@ PIC_INLINE float *ConvertLDR2HDR(unsigned char *dataIn, float *dataOut,
 }
 
 /**
- * @brief ConvertHDR2LDR converts a buffer of unsigned char into float.
+ * @brief ConvertHDR2LDR converts a buffer of float into unsigned char.
  * @param dataIn
  * @param dataOut
  * @param size
