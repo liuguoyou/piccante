@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
         printf("Ok\n");
 
         if(imgOut != NULL) {
-            imgOut->Write("../data/output/hdr_generation_image.hdr");
+            imgOut->Write("../data/output/hdr_generation_image_log.hdr");
         }
 
     } else {

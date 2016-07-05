@@ -117,7 +117,7 @@ protected:
             }
         }
 
-        icrf->clear();
+        icrf.clear();
     }
 
     IMG_LIN                 type_linearization;
@@ -193,7 +193,8 @@ public:
             break;
 
             case IL_2_2: {
-                return powf(x, 1.0f / 2.2f);
+                constexpr float inv_gamma = 1.0f / 2.2f;
+                return powf(x, inv_gamma);
             }
             break;
 
