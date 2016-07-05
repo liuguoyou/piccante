@@ -111,11 +111,13 @@ protected:
      */
     void Destroy()
     {
-        for(unsigned int i=0; i<icrf.size(); i++) {
+        for(unsigned int i = 0; i < icrf.size(); i++) {
             if(icrf[i] != NULL) {
                 delete[] icrf[i];
             }
         }
+
+        icrf->clear();
     }
 
     IMG_LIN                 type_linearization;
@@ -318,7 +320,7 @@ public:
             nSamples = 256;
         }
 
-        icrf.clear();
+        Destroy();
 
         this->type_linearization = IL_LUT_8_BIT;
 
@@ -352,14 +354,6 @@ public:
             float *icrf_channel = gsolve(&samples[i * stride], log_exposure, lambda, nSamples,
                                         nExposure);
 
-            /*//Wrapping into an Image for normalization
-            Image img(1, 256, 1, 1, icrf_channel);
-
-            float *max_val = img.getMaxVal(NULL, NULL);
-            if(max_val[0] > 0.0f) {
-                img /= max_val[0];
-            }*/
-
             icrf.push_back(icrf_channel);
         }
         
@@ -390,40 +384,35 @@ public:
             return;
         }
 
-        for (size_t i=1; i<stack.size(); i++)
-        {
-            if (!stack[0]->SimilarType(stack[i]))
+        for (size_t i=1; i<stack.size(); i++) {
+            if (!stack[0]->SimilarType(stack[i])) {
                 return;
+            }
         }
 
         this->Destroy();
-        this->icrf.clear();
         this->type_linearization = IL_LUT_8_BIT;
 
         const int channels   = stack[0]->channels;
         const int pixelcount = stack[0]->nPixels();
 
         // precompute robertson weighting function
-        for (size_t i=0; i<256; i++)
-        {
+        for (size_t i=0; i<256; i++) {
             this->w[i] = pic::WeightFunction(i/255.0, pic::CW_ROBERTSON);
         }
 
         // avoid saturation
         int minM = 0;
         int maxM = 255;
-        for (int m=0; m<256; m++)
-        {
-            if (this->w[m] > 0)
-            {
+        for (int m=0; m<256; m++) {
+            if (this->w[m] > 0) {
                 minM = m;
                 break;
             }
         }
-        for (int m=255; m>=0; m--)
-        {
-            if (this->w[m] > 0)
-            {
+
+        for (int m=255; m>=0; m--) {
+            if (this->w[m] > 0) {
                 maxM = m;
                 break;
             }
@@ -433,47 +422,46 @@ public:
         int lower [stack.size()];
         int higher[stack.size()];
 
-        for (size_t i=0; i<stack.size(); i++)
-        {
+        for (size_t i=0; i<stack.size(); i++) {
             lower[i]  = -1;
             higher[i] = -1;
             float t = stack[i]->exposure;
-            float tHigh = stack[0]->exposure;;
+            float tHigh = stack[0]->exposure;
             float tLow  = tHigh;
 
-            for (size_t j=0; j<stack.size(); j++)
-            {
-                if (i != j)
-                {
+            for (size_t j=0; j<stack.size(); j++) {
+                if (i != j) {
                     float tj = stack[j]->exposure;
 
-                    if (tj > t && tj < tHigh)
-                    {
+                    if (tj > t && tj < tHigh) {
                         tHigh = tj;
                         higher[i] = j;
                     }
-                    if (tj < t && tj > tLow)
-                    {
+                    if (tj < t && tj > tLow) {
                         tLow = tj;
                         lower[i] = j;
                     }
                 }
             }
-            if (lower[i]  == -1) lower[i]  = i;
-            if (higher[i] == -1) higher[i] = i;
+
+            if (lower[i]  == -1) {
+                lower[i]  = i;
+            }
+
+            if (higher[i] == -1) {
+                higher[i] = i;
+            }
         }
 
         // create initial inv response function
         {
             float * lin = new float[256];
-            for (int i=0; i<256; i++)
-            {
+            for (int i=0; i<256; i++) {
                 lin[i] = float(2.0 * i / 255.0);
             }
             this->icrf.push_back(lin);
 
-            for (int i=1; i<channels; i++)
-            {
+            for (int i=1; i<channels; i++) {
                 float * col = new float[256];
                 BufferAssign(col, lin, 256);
                 this->icrf.push_back(col);
@@ -482,16 +470,14 @@ public:
 
         // create quantized stack
         std::vector<unsigned char *> qstack;
-        for (Image * slice : stack)
-        {
+        for (Image * slice : stack) {
             assert(slice->frames == 1);
             unsigned char * q = pic::ConvertHDR2LDR(slice->data, NULL, slice->size(), pic::LT_NOR);
             qstack.push_back(q);
         }
 
         // iterative gauss-seidel
-        for (int ch=0; ch<channels; ch++)
-        {
+        for (int ch=0; ch<channels; ch++) {
             float * fun = this->icrf[ch];
             float funPrev[256];
             BufferAssign(funPrev, fun, 256);
@@ -499,8 +485,7 @@ public:
             std::vector<float> x(pixelcount);
 
             float prevDelta = 0.0f;
-            for (size_t iter=0; iter<maxIterations; iter++)
-            {
+            for (size_t iter=0; iter<maxIterations; iter++) {
                 // Normalize inv crf to midpoint
                 {
                     // find min max
@@ -528,8 +513,7 @@ public:
                 }
 
                 // Update x
-                for (int i=0; i<pixelcount; i++)
-                {
+                for (int i=0; i<pixelcount; i++) {
                     float sum     = 0.0f;
                     float divisor = 0.0f;
 
@@ -538,8 +522,7 @@ public:
 
                     int ind = i * channels + ch;
 
-                    for (size_t s=0; s<qstack.size(); s++)
-                    {
+                    for (size_t s=0; s<qstack.size(); s++) {
                         unsigned char * qslice = qstack[s];
                         const float     t      = stack[s]->exposure;
 
@@ -565,21 +548,19 @@ public:
                         divisor += wm * t * t;
                     }
 
-                    if (divisor == 0.0f)
-                    {
+                    if (divisor == 0.0f) {
                         // avoid saturation
-                        if (maxt > -1.0f)
-                        {
-                            x[i] = fun[minM]/maxt;
+                        if (maxt > -1.0f) {
+                            x[i] = fun[minM] / maxt;
                         }
-                        if (mint < FLT_MAX)
-                        {
-                            x[i] = fun[maxM]/mint;
+
+                        if (mint < FLT_MAX) {
+                            x[i] = fun[maxM] / mint;
                         }
                     } else if (divisor < 1e-4f) {
                         x[i] = -1.0f;
                     } else {
-                        x[i] = sum/divisor;
+                        x[i] = sum / divisor;
                     }
                 }
 
@@ -588,22 +569,19 @@ public:
                     size_t cardEm[256] = { 0 };
                     float  sum[256]    = { 0.0f };
                     float minSatTime = FLT_MAX;
-                    for (size_t s=0; s<qstack.size(); s++)
-                    {
+                    for (size_t s=0; s<qstack.size(); s++) {
                         unsigned char * qslice = qstack[s];
                         const float     t      = stack[s]->exposure;
 
-                        for (int i=0; i<pixelcount; i++)
-                        {
-                            if (x[i] < 0.0f)
-                            {
+                        for (int i=0; i<pixelcount; i++) {
+                            if (x[i] < 0.0f) {
                                 continue;
                             }
+
                             const int m = int(qslice[i*channels+ch]);
-                            if (m == 255)
-                            {
-                                if (t < minSatTime)
-                                {
+
+                            if (m == 255) {
+                                if (t < minSatTime) {
                                     minSatTime = t;
                                     sum[m] = t * x[i];
                                     cardEm[m] = 1;
@@ -612,9 +590,7 @@ public:
                                 {
                                     sum[m] = std::min(sum[m], t * x[i]);
                                 }
-                            }
-                            else
-                            {
+                            } else {
                                 sum[m] += t * x[i];
                                 cardEm[m]++;
                             }
@@ -623,8 +599,7 @@ public:
 
                     // compute average and fill undefined values with previous one
                     float prev = 0.0f;
-                    for (int m=0; m<256; m++)
-                    {
+                    for (int m=0; m<256; m++) {
                         if (cardEm[m] != 0) {
                             fun[m] = prev = sum[m] / cardEm[m];
                         } else {
@@ -639,10 +614,8 @@ public:
 
                     float delta = 0.0f;
                     int count   = 0;
-                    for (int m=0; m<256; m++)
-                    {
-                        if( fun[m] != 0.0f )
-                        {
+                    for (int m=0; m<256; m++) {
+                        if( fun[m] != 0.0f ) {
                             float diff = fun[m] - funPrev[m];
                             delta += diff * diff;
                             funPrev[m] = fun[m];
@@ -663,20 +636,18 @@ public:
 
         // normalize response function keeping relative scale between colors
         float maxV = -1.0f;
-        for (int ch=0; ch<channels; ch++)
-        {
+        for (int ch=0; ch<channels; ch++) {
             int ind;
             maxV = std::max(pic::Array<float>::getMax(this->icrf[ch], 256, ind), maxV);
         }
-        for (int ch=0; ch<channels; ch++)
-        {
+
+        for (int ch=0; ch<channels; ch++) {
             BufferDiv(this->icrf[ch], 256, maxV);
             this->icrf[ch][255] = 1.0f;
         }
 
         // clean quantized stack
-        for (unsigned char * qslice : qstack)
-        {
+        for (unsigned char * qslice : qstack) {
             delete qslice;
         }
     }

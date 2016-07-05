@@ -84,6 +84,7 @@ protected:
                     float weight_norm = 0.0f;
                     float acc = 0.0f;
 
+                    //for each exposure...
                     for(unsigned int l = 0; l < n; l++) {
                         float x = src[l]->data[c + k];
 
@@ -95,7 +96,7 @@ protected:
                             max_val_saturation[k] = x_lin / src[l]->exposure;
                         }
 
-                        //assembling domain
+                        //HDR assembling
                         switch(domain) {
                             case HRD_LIN: {
                                 acc += (weight * x_lin) / src[l]->exposure;
@@ -114,6 +115,7 @@ protected:
                         weight_norm += weight;
                     }
 
+                    //do we have pixels saturate?
                     if(weight_norm > 1e-4f) {
                         acc /= weight_norm;
                         if(domain == HRD_LOG) {
