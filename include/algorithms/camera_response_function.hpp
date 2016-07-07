@@ -292,6 +292,20 @@ public:
             }
             break;
 
+            case IL_POLYNOMIAL: {
+                float val = 0.f;
+                float M = 1.f;
+                for (const float &c : poly[channel]) {
+                    val += c * M;
+                    M *= x;
+                }
+                return val;
+            }
+            break;
+
+            default:
+                break;
+
         }
 
         return x;
@@ -508,7 +522,7 @@ public:
 
         Destroy();
 
-        type_linearization = IL_LIN;
+        type_linearization = IL_POLYNOMIAL;
 
         //Sort the array by exposure
         std::sort(stack.begin(), stack.end(), [](const Image *l, const Image *r)->bool{
