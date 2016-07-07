@@ -106,24 +106,35 @@ protected:
         return ret;
     }
 
+    /**
+     * @brief MitsunagaNayarClassic computes the inverse CRF of a camera as a polynomial function.
+     * @param samples           Sample array of size nSamples x #exposures.
+     * @param nSamples          Number of samples, for each exposure.
+     * @param exposures         Array of exposure timings (size: #exposures = 'Q' as in the Mitzunaga & Nayar paper).
+     * @param coefficients      The output coefficients ('c' in the paper) resulting from the computation.
+     * @param R                 The output estimated exposure ratios, i.e. R[q] = 'R_{q,q+1}' as in the paper.
+     * @param eps               Threshold for stopping the approximation process.
+     * @param max_iterations    Maximum number of iterations.
+     * @return The error as in the paper.
+     */
     float MitsunagaNayarClassic(unsigned char *samples, const std::size_t nSamples, const std::vector<float> &exposures,
                                 std::vector<float> &coefficients, std::vector<float> &R,
-                                const float eps, const std::size_t max_iterations = 10)
+                                const float eps, const std::size_t max_iterations)
     {
         for (float &_c : coefficients)
             _c = 0.f;
         R.assign(exposures.size() < 2 ? 0 : exposures.size() - 1, 1.f);
         for (int i = 0; i < R.size(); ++i)
-            R = exposures[i] / exposures[i+1];
-        if (!samples || nSamples == 0 || exposures.size() < 2 || coefficients .empty())
-            return 0.f;
+            R[i] = exposures[i] / exposures[i+1];
+        if (!samples || nSamples == 0 || exposures.size() < 2 || coefficients.empty())
+            return std::numeric_limits<float>::max();
 
         float eval, val;
         const std::size_t Q = exposures.size();
         const std::size_t N = coefficients.size() - 1;
 
         //Precompute test with exponentials
-        std::vector<Eigen::VectorXf> test(256, Eigen::VectorXf::Zeros(N+1));
+        std::vector<Eigen::VectorXf> test(256, Eigen::VectorXf::Zero(N+1));
         for (std::size_t i = 0; i < 256; ++i) {
             test[i][0] = 1.f;
             test[i][1] = (float)i;
@@ -146,9 +157,9 @@ protected:
         std::vector<std::vector<std::vector<float>>> d(nSamples,
                                                        std::vector<std::vector<float>>(Q-1,
                                                                                        std::vector<float>(N+1, 1.f)));
-        Eigen::MatrixXf A = Eigen::MatrixXf::Zeros(N, N);
-        Eigen::VectorXf x(N), b(N) = Eigen::VectorXf::Zeros(N);
-        Eigen::VectorXf c(N+1), prev_c(N+1) = Eigen::VectorXf::Ones(N+1);
+        Eigen::MatrixXf A = Eigen::MatrixXf::Zero(N, N);
+        Eigen::VectorXf x, b = Eigen::VectorXf::Zero(N);
+        Eigen::VectorXf c(N+1), prev_c = Eigen::VectorXf::Ones(N+1);
         std::vector<float> f(Q, 0.f);
 
         std::size_t iter = 0;
@@ -158,11 +169,10 @@ protected:
             for (std::size_t p = 0; p < nSamples; ++p)
                 for (std::size_t q = 0; q < Q-1; ++q)
                     for (std::size_t n = 0; n <= N; ++n)
-                        d[p][q][n] = M[p][q][n] -
-                                R[q] * M[p][q+1][n];
+                        d[p][q][n] = M[p][q][n] - R[q] * M[p][q+1][n];
 
             //Build the matrix A of the linear system
-            A.setZero(N, N);
+            A.setZero();
             for (std::size_t i = 0; i < N; ++i)
                 for (std::size_t j = 0; j < N; ++j)
                     for (std::size_t p = 0; p < nSamples; ++p)
@@ -170,7 +180,7 @@ protected:
                             A(i, j) += d[p][q][i] * (d[p][q][j] - d[p][q][N]);
 
             //Build the vector of knowns b
-            b.setZero(N);
+            b.setZero();
             for (std::size_t i = 0; i < N; ++i)
                 for (std::size_t p = 0; p < nSamples; ++p)
                     for (std::size_t q = 0; q < Q - 1; ++q)
@@ -232,6 +242,7 @@ protected:
         }
 
         icrf.clear();
+        poly.clear();
     }
 
     IMG_LIN                 type_linearization;
@@ -240,6 +251,8 @@ protected:
 public:
 
     std::vector<float *>    icrf;
+
+    std::vector<std::vector<float>>  poly;
     
     /**
      * @brief CameraResponseFunction
@@ -251,7 +264,7 @@ public:
 
     ~CameraResponseFunction()
     {
-        //Destroy();
+        Destroy();
     }
 
     /**
@@ -482,7 +495,8 @@ public:
      * @param polynomial_degree
      * @param nSamples
      */
-    void MitsunagaNayar(ImageVec stack, int polynomial_degree = 3, int nSamples = 100)
+    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = 3, const float eps = 0.0001f, int nSamples = 100,
+                        const std::size_t max_iterations = 10)
     {
         if(stack.empty()) {
             return;
@@ -504,21 +518,35 @@ public:
         });
 
         //Subsampling the image stack
-        unsigned char *samples = SubSampleStack::Grossberg(stack, nSamples);
+        unsigned char *samples = SubSampleStack::Spatial(stack, nSamples);
 
         //Computing CRF using Mitsunaga and Nayar
         int channels = stack[0]->channels;
 
-        unsigned int nExposure = stack.size();
+        std::size_t nExposures = stack.size();
 
-        int stride = nSamples * nExposure;
+        std::vector<float> exposures(nExposures, 0.f);
+        for (std::size_t t = 0; t < nExposures; ++t)
+            exposures[t] = stack[t]->exposure;
 
+        int stride = nSamples * nExposures;
+
+        std::vector<float> error(channels, std::numeric_limits<float>::max());
+        std::vector<float> R(nExposures - 1);
+        float tmpError;
+        std::vector<float> tmpCoefficients;
+
+        poly.resize(channels);
         for (int i = 0; i < channels; ++i) {
             if (polynomial_degree >= 0) {
-                // do one iter
+                poly[i].assign(polynomial_degree + 1, 0.f);
+                error[i] = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
             } else {
                 for (int degree = 0; degree < -polynomial_degree; ++degree) {
-                    //
+                    tmpCoefficients.resize(degree + 1);
+                    tmpError = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, tmpCoefficients, R, eps, max_iterations);
+                    if (tmpError < error[i])
+                        poly[i] = std::move(tmpCoefficients);
                 }
             }
         }
