@@ -295,7 +295,9 @@ PIC_INLINE Image *Filter::ProcessP(ImageVec imgIn, Image *imgOut)
     //Threads join
     for(int i = 0; i < numCores; i++) {
         thrd[i]->join();
+        delete thrd[i];
     }
+    delete[] thrd;
 
     return imgOut;
 #else
