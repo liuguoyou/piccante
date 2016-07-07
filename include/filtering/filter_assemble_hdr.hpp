@@ -103,7 +103,7 @@ protected:
                             } break;
 
                             case HRD_LOG: {
-                                acc += weight * (logf(x_lin + delta_value) - logf(src[l]->exposure + delta_value));
+                                acc += weight * (logf(x_lin + delta_value) - logf(src[l]->exposure));
                             } break;
 
                             case HRD_SQ: {

@@ -326,7 +326,7 @@ public:
         this->type_linearization = IL_LUT_8_BIT;
 
         //Subsampling the image stack
-        unsigned char *samples = SubSampleStack::Grossberg(stack, nSamples);
+        unsigned char *samples = SubSampleStack::Spatial(stack, nSamples);
         
         //Computing CRF using Debevec and Malik
         int channels = stack[0]->channels;

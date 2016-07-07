@@ -18,6 +18,8 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef PIC_ALGORITHMS_SUB_SAMPLE_STACK_HPP
 #define PIC_ALGORITHMS_SUB_SAMPLE_STACK_HPP
 
+#include "util/math.hpp"
+
 #include "image.hpp"
 #include "point_samplers/sampler_random.hpp"
 #include "histogram.hpp"
@@ -34,7 +36,7 @@ public:
     /**
      * @brief SubSampleStack
      */
-    SubSampleStack()
+    SubSampleStack(ImageVec stack, int &nSamples)
     {
         
     }
@@ -45,7 +47,7 @@ public:
     * \param nSamples output number of samples
     * \return samples an array of unsigned char values which is the low resolution stack
     */
-    static unsigned char *Grossberg(ImageVec stack, int nSamples = 100)
+    static unsigned char *Grossberg(ImageVec stack, int &nSamples)
     {
         if(stack.size() < 1) {
             return NULL;
@@ -85,10 +87,13 @@ public:
         #endif
 
         c = 0;
+
+        float div = float(nSamples - 1);
+
         for(int k = 0; k < channels; k++) {
             for(int i = 0; i < nSamples; i++) {
 
-                float u = float(i) / float(nSamples);
+                float u = float(i) / div;
 
                 for(unsigned int j = 0; j < exposures; j++) {
 
@@ -97,9 +102,8 @@ public:
                     float *bin_c = h[ind].getCumulativef();
 
                     float *ptr = std::upper_bound(&bin_c[0], &bin_c[255], u);
-                    int offset = CLAMPi((int)(ptr - bin_c), 0, 255);
 
-                    samples[c] = offset;
+                    samples[c] = CLAMPi((int)(ptr - bin_c), 0, 255);
                     c++;
                 }
             }
@@ -108,6 +112,8 @@ public:
         #ifdef PIC_DEBUG
             printf("Ok\n");
         #endif
+
+        delete[] h;
 
         return samples;
     }
@@ -119,10 +125,14 @@ public:
     * \return samples an array of unsigned char values which is the low resolution stack
      * @return
      */
-    static unsigned char *Spatial(ImageVec stack, int &nSamples)
+    static unsigned char *Spatial(ImageVec stack, int &nSamples, SAMPLER_TYPE sub_type = ST_MONTECARLO_S)
     {
         if(stack.size() < 1) {
             return NULL;
+        }
+
+        if(nSamples < 1) {
+            nSamples = 256;
         }
 
         int width    = stack[0]->width;
@@ -131,35 +141,38 @@ public:
 
         Vec<2, int> vec(width, height);
 
-        RandomSampler<2> *p2Ds = new RandomSampler<2>(ST_BRIDSON, vec, nSamples, 1, 0);
+        RandomSampler<2> *sampler = new RandomSampler<2>(sub_type, vec, nSamples, 1, 0);
 
         #ifdef PIC_DEBUG
             int oldNSamples = nSamples;
         #endif
 
-        nSamples = p2Ds->getSamplesPerLevel(0);
+        nSamples = sampler->getSamplesPerLevel(0);
 
         #ifdef PIC_DEBUG
             printf("--subSample samples: %d \t \t old samples: %d\n", nSamples, oldNSamples);
         #endif
 
-        int c = 0;
-
         unsigned char *samples = new unsigned char[nSamples * channels * stack.size()];
 
+        int c = 0;
+
         for(int k = 0; k < channels; k++) {
-            for(int i = 0; i <nSamples; i++) {
+            for(int i = 0; i < nSamples; i++) {
 
                 int x, y;
-                p2Ds->getSampleAt(0, i, x, y);
+                sampler->getSampleAt(0, i, x, y);
 
                 for(unsigned int j = 0; j < stack.size(); j++) {
-                    int converted = int((*stack[j])(x, y)[k] * 255.0f);
-                    samples[c] = converted;
+                    float fetched = (*stack[j])(x, y)[k];
+                    float tmp = lround(fetched * 255.0f);
+                    samples[c] = CLAMPi(int(tmp), 0, 255);
                     c++;
                 }
             }
         }
+
+        delete sampler;
 
         return samples;
     }
