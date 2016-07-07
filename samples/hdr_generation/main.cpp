@@ -71,7 +71,27 @@ int main(int argc, char *argv[])
 
         if(imgOut != NULL) {
             imgOut->Write("../data/output/hdr_generation_image_log.hdr");
+            delete imgOut;
         }
+
+
+        //Estimating the polynomial camera response function
+        printf("Estimating the polynomial camera response function... ");
+
+        crf.MitsunagaNayar(stack_vec);
+        printf("Ok.\n");
+
+        printf("Assembling the different exposure images... ");
+        pic::FilterAssembleHDR mergerPoly(&crf, pic::CW_DEB97, pic::HRD_LIN);
+        imgOut = mergerPoly.ProcessP(stack_vec, NULL);
+
+        printf("Ok\n");
+
+        if(imgOut != NULL) {
+            imgOut->Write("../data/output/hdr_generation_image_poly.hdr");
+            delete imgOut;
+        }
+
 
     } else {
         printf("No, the files are not valid!\n");

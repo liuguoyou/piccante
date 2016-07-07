@@ -509,7 +509,7 @@ public:
      * @param polynomial_degree
      * @param nSamples
      */
-    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = 3, const float eps = 0.0001f, int nSamples = 100,
+    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, const float eps = 0.0001f, int nSamples = 100,
                         const std::size_t max_iterations = 10)
     {
         if(stack.empty()) {
