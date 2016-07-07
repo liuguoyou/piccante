@@ -106,6 +106,120 @@ protected:
         return ret;
     }
 
+    float MitsunagaNayarClassic(unsigned char *samples, const std::size_t nSamples, const std::vector<float> &exposures,
+                                std::vector<float> &coefficients, std::vector<float> &R,
+                                const float eps, const std::size_t max_iterations = 10)
+    {
+        for (float &_c : coefficients)
+            _c = 0.f;
+        R.assign(exposures.size() < 2 ? 0 : exposures.size() - 1, 1.f);
+        for (int i = 0; i < R.size(); ++i)
+            R = exposures[i] / exposures[i+1];
+        if (!samples || nSamples == 0 || exposures.size() < 2 || coefficients .empty())
+            return 0.f;
+
+        float eval, val;
+        const std::size_t Q = exposures.size();
+        const std::size_t N = coefficients.size() - 1;
+
+        //Precompute test with exponentials
+        std::vector<Eigen::VectorXf> test(256, Eigen::VectorXf::Zeros(N+1));
+        for (std::size_t i = 0; i < 256; ++i) {
+            test[i][0] = 1.f;
+            test[i][1] = (float)i;
+            for (std::size_t n = 2; n <= N; ++n)
+                test[i][n] = test[i][1] * test[i][n-1];
+        }
+
+        //Precompute M with exponentials
+        std::vector<std::vector<std::vector<float>>> M(nSamples,
+                                                       std::vector<std::vector<float>>(Q,
+                                                                                       std::vector<float>(N+1, 0.f)));
+        for (std::size_t p = 0; p < nSamples; ++p)
+            for (std::size_t q = 0; q < Q; ++q) {
+                M[p][q][0] = 1.f;
+                M[p][q][1] = samples[p * Q + q] / 255.f;
+                for (std::size_t n = 2; n <= N; ++n)
+                    M[p][q][n] = M[p][q][1] * M[p][q][n-1];
+            }
+
+        std::vector<std::vector<std::vector<float>>> d(nSamples,
+                                                       std::vector<std::vector<float>>(Q-1,
+                                                                                       std::vector<float>(N+1, 1.f)));
+        Eigen::MatrixXf A = Eigen::MatrixXf::Zeros(N, N);
+        Eigen::VectorXf x(N), b(N) = Eigen::VectorXf::Zeros(N);
+        Eigen::VectorXf c(N+1), prev_c(N+1) = Eigen::VectorXf::Ones(N+1);
+        std::vector<float> f(Q, 0.f);
+
+        std::size_t iter = 0;
+
+        do {
+            //Compute d
+            for (std::size_t p = 0; p < nSamples; ++p)
+                for (std::size_t q = 0; q < Q-1; ++q)
+                    for (std::size_t n = 0; n <= N; ++n)
+                        d[p][q][n] = M[p][q][n] -
+                                R[q] * M[p][q+1][n];
+
+            //Build the matrix A of the linear system
+            A.setZero(N, N);
+            for (std::size_t i = 0; i < N; ++i)
+                for (std::size_t j = 0; j < N; ++j)
+                    for (std::size_t p = 0; p < nSamples; ++p)
+                        for (std::size_t q = 0; q < Q - 1; ++q)
+                            A(i, j) += d[p][q][i] * (d[p][q][j] - d[p][q][N]);
+
+            //Build the vector of knowns b
+            b.setZero(N);
+            for (std::size_t i = 0; i < N; ++i)
+                for (std::size_t p = 0; p < nSamples; ++p)
+                    for (std::size_t q = 0; q < Q - 1; ++q)
+                        b(i) -= d[p][q][i] * d[p][q][N];
+
+            //Solve the linear system
+            Eigen::JacobiSVD< Eigen::MatrixXf > svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
+            x = svd.solve(b);
+            c << x, x.sum();
+
+            //Evaluate approximation increment
+            eval = std::numeric_limits<float>::lowest();
+            for (const Eigen::VectorXf &_M : test) {
+                val = std::abs((c - prev_c).dot(_M));
+                if (val > eval)
+                    eval = val;
+            }
+
+            //Update R
+            for (std::size_t q = 0; q < Q; ++q) {
+                f[q] = 0.f;
+                for (std::size_t p = 0; p < nSamples; ++p)
+                    for (std::size_t n = 0; n <= N; ++n)
+                        f[q] += c[n] * M[p][q][n];
+            }
+            for (std::size_t q = 0; q < Q-1; ++q)
+                R[q] = f[q] / f[q+1];
+
+            prev_c = c;
+
+            ++iter;
+        } while (eval >= eps && iter < max_iterations);
+
+        for (std::size_t n = 0; n <= N; ++n)
+            coefficients[n] = c[n];
+
+        //Evaluate error
+        eval = 0.f;
+        for (std::size_t q = 0; q < Q-1; ++q)
+            for (std::size_t p = 0; p < nSamples; ++p) {
+                val = 0.f;
+                for (std::size_t n = 0; n <= N; ++n)
+                    val += coefficients[n] * (M[p][q][n] + R[q] * M[p][q+1][n]);
+                eval += val * val;
+            }
+
+        return eval;
+    }
+
     /**
      * @brief Destroy frees memory.
      */
@@ -370,6 +484,46 @@ public:
      */
     void MitsunagaNayar(ImageVec stack, int polynomial_degree = 3, int nSamples = 100)
     {
+        if(stack.empty()) {
+            return;
+        }
+
+        if(nSamples < 1) {
+            nSamples = 256;
+        }
+
+        Destroy();
+
+        type_linearization = IL_LIN;
+
+        //Sort the array by exposure
+        std::sort(stack.begin(), stack.end(), [](const Image *l, const Image *r)->bool{
+            if (!l || !r)
+                return false;
+            return l->exposure < r->exposure;
+        });
+
+        //Subsampling the image stack
+        unsigned char *samples = SubSampleStack::Grossberg(stack, nSamples);
+
+        //Computing CRF using Mitsunaga and Nayar
+        int channels = stack[0]->channels;
+
+        unsigned int nExposure = stack.size();
+
+        int stride = nSamples * nExposure;
+
+        for (int i = 0; i < channels; ++i) {
+            if (polynomial_degree >= 0) {
+                // do one iter
+            } else {
+                for (int degree = 0; degree < -polynomial_degree; ++degree) {
+                    //
+                }
+            }
+        }
+
+        delete[] samples;
     }
 
     /**
