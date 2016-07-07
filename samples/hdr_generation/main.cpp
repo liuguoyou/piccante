@@ -58,12 +58,14 @@ int main(int argc, char *argv[])
 
         //Estimating the camera response function
         printf("Estimating the camera response function... ");
+        fflush(stdout);
         pic::CameraResponseFunction crf;
 
         crf.DebevecMalik(stack_vec);
-        printf("Ok.\n");
+        printf("Ok\n");
 
         printf("Assembling the different exposure images... ");
+        fflush(stdout);
         pic::FilterAssembleHDR merger(&crf, pic::CW_DEB97, pic::HRD_LOG);
         pic::Image *imgOut = merger.ProcessP(stack_vec, NULL);
 
@@ -77,12 +79,14 @@ int main(int argc, char *argv[])
 
         //Estimating the polynomial camera response function
         printf("Estimating the polynomial camera response function... ");
+        fflush(stdout);
 
-        crf.MitsunagaNayar(stack_vec);
+        crf.MitsunagaNayar(stack_vec, -10);
         printf("Ok.\n");
 
         printf("Assembling the different exposure images... ");
-        pic::FilterAssembleHDR mergerPoly(&crf, pic::CW_DEB97, pic::HRD_LIN);
+        fflush(stdout);
+        pic::FilterAssembleHDR mergerPoly(&crf, pic::CW_HAT, pic::HRD_LIN);
         imgOut = mergerPoly.ProcessP(stack_vec, NULL);
 
         printf("Ok\n");

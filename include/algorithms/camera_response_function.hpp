@@ -126,7 +126,7 @@ protected:
         R.assign(exposures.size() < 2 ? 0 : exposures.size() - 1, 1.f);
         for (int i = 0; i < R.size(); ++i)
             R[i] = exposures[i] / exposures[i+1];
-        if (!samples || nSamples == 0 || exposures.size() < 2 || coefficients.empty())
+        if (!samples || nSamples == 0 || exposures.size() < 2 || coefficients.size() < 2)
             return std::numeric_limits<float>::max();
 
         float eval, val;
@@ -137,9 +137,8 @@ protected:
         std::vector<Eigen::VectorXf> test(256, Eigen::VectorXf::Zero(N+1));
         for (std::size_t i = 0; i < 256; ++i) {
             test[i][0] = 1.f;
-            test[i][1] = (float)i;
-            for (std::size_t n = 2; n <= N; ++n)
-                test[i][n] = test[i][1] * test[i][n-1];
+            for (std::size_t n = 1; n <= N; ++n)
+                test[i][n] = (float)i * test[i][n-1];
         }
 
         //Precompute M with exponentials
@@ -509,8 +508,8 @@ public:
      * @param polynomial_degree
      * @param nSamples
      */
-    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, const float eps = 0.0001f, int nSamples = 100,
-                        const std::size_t max_iterations = 10)
+    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, const float eps = 0.0001f, int nSamples = 10000,
+                        const std::size_t max_iterations = 100)
     {
         if(stack.empty()) {
             return;
@@ -552,11 +551,11 @@ public:
 
         poly.resize(channels);
         for (int i = 0; i < channels; ++i) {
-            if (polynomial_degree >= 0) {
+            if (polynomial_degree > 1) {
                 poly[i].assign(polynomial_degree + 1, 0.f);
                 error[i] = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
-            } else {
-                for (int degree = 0; degree < -polynomial_degree; ++degree) {
+            } else if (polynomial_degree < -1) {
+                for (int degree = 1; degree < -polynomial_degree; ++degree) {
                     tmpCoefficients.resize(degree + 1);
                     tmpError = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, tmpCoefficients, R, eps, max_iterations);
                     if (tmpError < error[i])
