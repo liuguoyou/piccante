@@ -558,8 +558,10 @@ public:
                 for (int degree = 1; degree < -polynomial_degree; ++degree) {
                     tmpCoefficients.resize(degree + 1);
                     tmpError = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, tmpCoefficients, R, eps, max_iterations);
-                    if (tmpError < error[i])
+                    if (tmpError < error[i]) {
+                        error[i] = tmpError;
                         poly[i] = std::move(tmpCoefficients);
+                    }
                 }
             }
         }
