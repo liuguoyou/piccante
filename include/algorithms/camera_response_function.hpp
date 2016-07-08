@@ -110,7 +110,7 @@ protected:
      * @brief MitsunagaNayarClassic computes the inverse CRF of a camera as a polynomial function.
      * @param samples           Sample array of size nSamples x #exposures.
      * @param nSamples          Number of samples, for each exposure.
-     * @param exposures         Array of exposure timings (size: #exposures = 'Q' as in the Mitzunaga & Nayar paper).
+     * @param exposures         Array of exposure timings (size: #exposures = 'Q' as in the Mitsunaga & Nayar paper).
      * @param coefficients      The output coefficients ('c' in the paper) resulting from the computation.
      * @param R                 The output estimated exposure ratios, i.e. R[q] = 'R_{q,q+1}' as in the paper.
      * @param eps               Threshold for stopping the approximation process.
@@ -138,7 +138,7 @@ protected:
         for (std::size_t i = 0; i < 256; ++i) {
             test[i][0] = 1.f;
             for (std::size_t n = 1; n <= N; ++n)
-                test[i][n] = (float)i * test[i][n-1];
+                test[i][n] = (float)i / 255.f * test[i][n-1];
         }
 
         //Precompute M with exponentials
@@ -148,9 +148,8 @@ protected:
         for (std::size_t p = 0; p < nSamples; ++p)
             for (std::size_t q = 0; q < Q; ++q) {
                 M[p][q][0] = 1.f;
-                M[p][q][1] = samples[p * Q + q] / 255.f;
-                for (std::size_t n = 2; n <= N; ++n)
-                    M[p][q][n] = M[p][q][1] * M[p][q][n-1];
+                for (std::size_t n = 1; n <= N; ++n)
+                    M[p][q][n] = (float)samples[p * Q + q] / 255.f * M[p][q][n-1];
             }
 
         std::vector<std::vector<std::vector<float>>> d(nSamples,
@@ -158,7 +157,7 @@ protected:
                                                                                        std::vector<float>(N+1, 1.f)));
         Eigen::MatrixXf A = Eigen::MatrixXf::Zero(N, N);
         Eigen::VectorXf x, b = Eigen::VectorXf::Zero(N);
-        Eigen::VectorXf c(N+1), prev_c = Eigen::VectorXf::Ones(N+1);
+        Eigen::VectorXf c(N+1), prev_c = Eigen::VectorXf::Zero(N+1);
         std::vector<float> f(Q, 0.f);
 
         std::size_t iter = 0;
@@ -188,7 +187,7 @@ protected:
             //Solve the linear system
             Eigen::JacobiSVD< Eigen::MatrixXf > svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
             x = svd.solve(b);
-            c << x, x.sum();
+            c << x, 1.f - x.sum();
 
             //Evaluate approximation increment
             eval = std::numeric_limits<float>::lowest();
@@ -211,7 +210,7 @@ protected:
             prev_c = c;
 
             ++iter;
-        } while (eval >= eps && iter < max_iterations);
+        } while (eval > eps && iter < max_iterations);
 
         for (std::size_t n = 0; n <= N; ++n)
             coefficients[n] = c[n];
@@ -222,7 +221,7 @@ protected:
             for (std::size_t p = 0; p < nSamples; ++p) {
                 val = 0.f;
                 for (std::size_t n = 0; n <= N; ++n)
-                    val += coefficients[n] * (M[p][q][n] + R[q] * M[p][q+1][n]);
+                    val += coefficients[n] * (M[p][q][n] - R[q] * M[p][q+1][n]);
                 eval += val * val;
             }
 
@@ -508,18 +507,16 @@ public:
      * @param polynomial_degree
      * @param nSamples
      */
-    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, const float eps = 0.0001f, int nSamples = 10000,
+    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, const float eps = 0.00001f, int nSamples = 10000,
                         const std::size_t max_iterations = 100)
     {
-        if(stack.empty()) {
-            return;
-        }
-
-        if(nSamples < 1) {
-            nSamples = 256;
-        }
-
         Destroy();
+
+        if(stack.size() < 2)
+            return;
+
+        if(nSamples < 1)
+            nSamples = 256;
 
         type_linearization = IL_POLYNOMIAL;
 

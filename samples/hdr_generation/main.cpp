@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
         printf("Estimating the polynomial camera response function... ");
         fflush(stdout);
 
-        crf.MitsunagaNayar(stack_vec, -10);
+        crf.MitsunagaNayar(stack_vec, 3);
         printf("Ok.\n");
 
         printf("Assembling the different exposure images... ");
