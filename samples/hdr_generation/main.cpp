@@ -73,6 +73,9 @@ int main(int argc, char *argv[])
 
         if(imgOut != NULL) {
             imgOut->Write("../data/output/hdr_generation_image_log.hdr");
+            pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
+            imgToneMapped_reinhard->Write("../data/output/ldr_generation_image_log.png", pic::LT_NOR_GAMMA);
+            delete imgToneMapped_reinhard;
             delete imgOut;
         }
 
@@ -86,13 +89,18 @@ int main(int argc, char *argv[])
 
         printf("Assembling the different exposure images... ");
         fflush(stdout);
-        pic::FilterAssembleHDR mergerPoly(&crf, pic::CW_HAT, pic::HRD_LIN);
+        pic::FilterAssembleHDR mergerPoly(&crf, pic::CW_DEB97, pic::HRD_LOG);
         imgOut = mergerPoly.ProcessP(stack_vec, NULL);
 
         printf("Ok\n");
 
         if(imgOut != NULL) {
             imgOut->Write("../data/output/hdr_generation_image_poly.hdr");
+
+            pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
+            imgToneMapped_reinhard->Write("../data/output/ldr_generation_image_poly.png", pic::LT_NOR_GAMMA);
+            delete imgToneMapped_reinhard;
+
             delete imgOut;
         }
 

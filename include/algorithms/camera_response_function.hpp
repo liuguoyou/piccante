@@ -28,6 +28,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #ifndef PIC_DISABLE_EIGEN
     #include "externals/Eigen/SVD"
+    #include "externals/Eigen/LU"
 #endif
 
 namespace pic {
@@ -129,7 +130,7 @@ protected:
         if (!samples || nSamples == 0 || exposures.size() < 2 || coefficients.size() < 2)
             return std::numeric_limits<float>::max();
 
-        float eval, val;
+        float eval, val, tmp1, tmp2;
         const std::size_t Q = exposures.size();
         const std::size_t N = coefficients.size() - 1;
 
@@ -158,7 +159,6 @@ protected:
         Eigen::MatrixXf A = Eigen::MatrixXf::Zero(N, N);
         Eigen::VectorXf x, b = Eigen::VectorXf::Zero(N);
         Eigen::VectorXf c(N+1), prev_c = Eigen::VectorXf::Zero(N+1);
-        std::vector<float> f(Q, 0.f);
 
         std::size_t iter = 0;
 
@@ -170,7 +170,7 @@ protected:
                         d[p][q][n] = M[p][q][n] - R[q] * M[p][q+1][n];
 
             //Build the matrix A of the linear system
-            A.setZero();
+            A.setZero(N, N);
             for (std::size_t i = 0; i < N; ++i)
                 for (std::size_t j = 0; j < N; ++j)
                     for (std::size_t p = 0; p < nSamples; ++p)
@@ -178,15 +178,14 @@ protected:
                             A(i, j) += d[p][q][i] * (d[p][q][j] - d[p][q][N]);
 
             //Build the vector of knowns b
-            b.setZero();
+            b.setZero(N);
             for (std::size_t i = 0; i < N; ++i)
                 for (std::size_t p = 0; p < nSamples; ++p)
                     for (std::size_t q = 0; q < Q - 1; ++q)
                         b(i) -= d[p][q][i] * d[p][q][N];
 
             //Solve the linear system
-            Eigen::JacobiSVD< Eigen::MatrixXf > svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
-            x = svd.solve(b);
+            x = A.partialPivLu().solve(b);
             c << x, 1.f - x.sum();
 
             //Evaluate approximation increment
@@ -197,19 +196,25 @@ protected:
                     eval = val;
             }
 
-            //Update R
-            for (std::size_t q = 0; q < Q; ++q) {
-                f[q] = 0.f;
-                for (std::size_t p = 0; p < nSamples; ++p)
-                    for (std::size_t n = 0; n <= N; ++n)
-                        f[q] += c[n] * M[p][q][n];
-            }
-            for (std::size_t q = 0; q < Q-1; ++q)
-                R[q] = f[q] / f[q+1];
-
-            prev_c = c;
-
             ++iter;
+
+            if (eval > eps && iter < max_iterations) {
+                //Update R
+                for (std::size_t q = 0; q < Q-1; ++q) {
+                    R[q] = 0.f;
+                    for (std::size_t p = 0; p < nSamples; ++p) {
+                        tmp1 = 0.f;
+                        tmp2 = 0.f;
+                        for (std::size_t n = 0; n <= N; ++n) {
+                            tmp1 += c[n] * M[p][q][n];
+                            tmp2 += c[n] * M[p][q+1][n];
+                        }
+                        R[q] += tmp1 / tmp2;
+                    }
+                }
+
+                prev_c = c;
+            }
         } while (eval > eps && iter < max_iterations);
 
         for (std::size_t n = 0; n <= N; ++n)
@@ -224,6 +229,12 @@ protected:
                     val += coefficients[n] * (M[p][q][n] - R[q] * M[p][q+1][n]);
                 eval += val * val;
             }
+
+        for (const Eigen::VectorXf &_M : test) {
+            val = c.dot(_M);
+            std::cout << val << ' ';
+        }
+        std::cout << std::endl;
 
         return eval;
     }
@@ -507,8 +518,8 @@ public:
      * @param polynomial_degree
      * @param nSamples
      */
-    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, const float eps = 0.00001f, int nSamples = 10000,
-                        const std::size_t max_iterations = 100)
+    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, int nSamples = 1000,
+                        const float eps = 0.0001f, const std::size_t max_iterations = 100)
     {
         Destroy();
 
@@ -528,7 +539,7 @@ public:
         });
 
         //Subsampling the image stack
-        unsigned char *samples = SubSampleStack::Spatial(stack, nSamples);
+        unsigned char *samples = SubSampleStack::Grossberg(stack, nSamples);
 
         //Computing CRF using Mitsunaga and Nayar
         int channels = stack[0]->channels;
