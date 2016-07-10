@@ -199,15 +199,15 @@ protected:
             //Update R
             for (std::size_t q = 0; q < Q-1; ++q) {
                 R[q] = 0.f;
-                tmp1 = 0.f;
-                tmp2 = 0.f;
                 for (std::size_t p = 0; p < nSamples; ++p) {
+                    tmp1 = 0.f;
+                    tmp2 = 0.f;
                     for (std::size_t n = 0; n <= N; ++n) {
                         tmp1 += c[n] * M[p][q][n];
                         tmp2 += c[n] * M[p][q+1][n];
                     }
+                    R[q] += tmp1 / tmp2;
                 }
-                R[q] += tmp1 / tmp2;
             }
 
             prev_c = c;
@@ -337,17 +337,13 @@ protected:
             //Update R
             for (std::size_t q1 = 0; q1 < Q-1; ++q1)
                 for (std::size_t q2 = 0; q2 < Q-1; ++q2) {
-                    if (q2 == q1)
-                        R[q1][q2] = 1.f;
-                    else {
-                        R[q1][q2] = 0.f;
+                    R[q1][q2] = 0.f;
+                    for (std::size_t p = 0; p < nSamples; ++p) {
                         tmp1 = 0.f;
                         tmp2 = 0.f;
-                        for (std::size_t p = 0; p < nSamples; ++p) {
-                            for (std::size_t n = 0; n <= N; ++n) {
-                                tmp1 += c[n] * M[p][q1][n];
-                                tmp2 += c[n] * M[p][q2][n];
-                            }
+                        for (std::size_t n = 0; n <= N; ++n) {
+                            tmp1 += c[n] * M[p][q1][n];
+                            tmp2 += c[n] * M[p][q2][n];
                         }
                         R[q1][q2] += tmp1 / tmp2;
                     }
@@ -365,7 +361,7 @@ protected:
         eval = 0.f;
         for (std::size_t q1 = 0; q1 < Q-1; ++q1)
             for (std::size_t q2 = 0; q2 < Q-1; ++q2)
-                if (q2 != q1)
+                //if (q2 != q1)
                     for (std::size_t p = 0; p < nSamples; ++p) {
                         val = 0.f;
                         for (std::size_t n = 0; n <= N; ++n)
@@ -650,10 +646,14 @@ public:
     }
 
     /**
-     * @brief MitsunagaNayar
-     * @param stack
-     * @param polynomial_degree
-     * @param nSamples
+     * @brief MitsunagaNayar computes the inverse CRF of a camera as a polynomial function.
+     * @param stack Array of images with associated exposure. Note that this array will be sorted with increasing exposure.
+     * @param polynomial_degree Degree of the polynomial. If negative, the best degree will be selected in [1, -polynomial_degree] for each channel.
+     * @param nSamples Number of samples to extract from each image.
+     * @param full true for computing all exposure ratios (as in book "High Dynamic Range Imaging", second edition, Reinhard et al.), false as in
+     *          the original paper (only among successive exposures).
+     * @param eps Threshold on the difference among successive approximations for stopping the computation.
+     * @param max_iterations Stop the computation after this number of iterations.
      */
     void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, int nSamples = 1000, const bool full = false,
                         const float eps = 0.0001f, const std::size_t max_iterations = 100)
@@ -689,7 +689,7 @@ public:
 
         int stride = nSamples * nExposures;
 
-        float error = std::numeric_limits<float>::max();
+        float error = std::numeric_limits<float>::infinity();
         std::vector<float> R(nExposures - 1);
         std::vector<std::vector<float>> RR(nExposures - 1, std::vector<float>(nExposures - 1));
 
@@ -702,9 +702,10 @@ public:
                 else
                     error = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
             } else if (polynomial_degree < -1) {
+                error = std::numeric_limits<float>::infinity();
                 float tmpError;
                 std::vector<float> tmpCoefficients;
-                for (int degree = 1; degree < -polynomial_degree; ++degree) {
+                for (int degree = 1; degree <= -polynomial_degree; ++degree) {
                     tmpCoefficients.resize(degree + 1);
                     if (full)
                         tmpError = MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, tmpCoefficients, RR, eps, max_iterations);
