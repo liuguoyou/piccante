@@ -56,35 +56,36 @@ int main(int argc, char *argv[])
     if(valid) {
         printf("Ok\n");
 
-        //Estimating the camera response function
-        printf("Estimating the camera response function... ");
-        fflush(stdout);
         pic::CameraResponseFunction crf;
+        pic::Image *imgOut = nullptr;
+//        //Estimating the camera response function
+//        printf("Estimating the camera response function... ");
+//        fflush(stdout);
 
-        crf.DebevecMalik(stack_vec);
-        printf("Ok\n");
+//        crf.DebevecMalik(stack_vec);
+//        printf("Ok\n");
 
-        printf("Assembling the different exposure images... ");
-        fflush(stdout);
-        pic::FilterAssembleHDR merger(&crf, pic::CW_DEB97, pic::HRD_LOG);
-        pic::Image *imgOut = merger.ProcessP(stack_vec, NULL);
+//        printf("Assembling the different exposure images... ");
+//        fflush(stdout);
+//        pic::FilterAssembleHDR merger(&crf, pic::CW_DEB97, pic::HRD_LOG);
+//        imgOut = merger.ProcessP(stack_vec, NULL);
 
-        printf("Ok\n");
+//        printf("Ok\n");
 
-        if(imgOut != NULL) {
-            imgOut->Write("../data/output/hdr_generation_image_log.hdr");
-            pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
-            imgToneMapped_reinhard->Write("../data/output/ldr_generation_image_log.png", pic::LT_NOR_GAMMA);
-            delete imgToneMapped_reinhard;
-            delete imgOut;
-        }
+//        if(imgOut != NULL) {
+//            imgOut->Write("../data/output/hdr_generation_image_log.hdr");
+//            pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
+//            imgToneMapped_reinhard->Write("../data/output/ldr_generation_image_log.png", pic::LT_NOR_GAMMA);
+//            delete imgToneMapped_reinhard;
+//            delete imgOut;
+//        }
 
 
         //Estimating the polynomial camera response function
         printf("Estimating the polynomial camera response function... ");
         fflush(stdout);
 
-        crf.MitsunagaNayar(stack_vec, 3);
+        crf.MitsunagaNayar(stack_vec, -4, 1000, false);
         printf("Ok.\n");
 
         printf("Assembling the different exposure images... ");
