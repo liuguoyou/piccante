@@ -133,6 +133,42 @@ public:
     }
 
     /**
+     * @brief mul
+     * @param vec
+     * @param size
+     * @param scale
+     * @return
+     */
+    static inline void mul(T *vec, int size, T scale)
+    {
+        if(vec == NULL || size < 1) {
+            return;
+        }
+
+        for(int i = 0; i < size; i++) {
+            vec[i] *= scale;
+        }
+    }
+
+    /**
+     * @brief mul
+     * @param vec
+     * @param size
+     * @param scale
+     * @return
+     */
+    static inline void mul(T *vec, int size, T *scale)
+    {
+        if(vec == NULL || size < 1) {
+            return;
+        }
+
+        for(int i = 0; i < size; i++) {
+            vec[i] *= scale[i];
+        }
+    }
+
+    /**
      * @brief sum
      * @param vec
      * @param size

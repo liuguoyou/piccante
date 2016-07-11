@@ -19,6 +19,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #define PIC_ALGORITHMS_HPP
 
 #include "algorithms/calculate_divergence.hpp"
+#include "algorithms/nelder_mead_opt_gray_match.hpp"
 #include "algorithms/camera_response_function.hpp"
 #include "algorithms/connected_components.hpp"
 #include "algorithms/discrete_cosine_transform.hpp"
