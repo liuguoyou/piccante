@@ -77,7 +77,7 @@ protected:
 
                     float *bin_c = h[ind].getCumulativef();
 
-                    float *ptr = std::upper_bound(&bin_c[0], &bin_c[255], u);
+                    float *ptr = std::upper_bound(&bin_c[0], &bin_c[0]+256, u);
 
                     samples[c] = CLAMPi((int)(ptr - bin_c), 0, 255);
                     c++;
@@ -163,8 +163,18 @@ public:
 
     ~SubSampleStack()
     {
+        Destroy();
+    }
+
+    void Destroy()
+    {
+        exposures = 0;
+        channels = 0;
+        nSamples = 0;
+        total = 0;
         if(samples != NULL) {
             delete[] samples;
+            samples = NULL;
         }
     }
 
@@ -178,6 +188,8 @@ public:
      */
     void Compute(ImageVec &stack, int nSamples, bool bRemoveOutliers, bool bSpatial = false, SAMPLER_TYPE sub_type = ST_MONTECARLO_S)
     {
+        Destroy();
+
         bCheck = stack.size() > 1;
         bCheck = bCheck && (nSamples > 1);
 
@@ -205,7 +217,7 @@ public:
             total = this->nSamples * this->channels * this->exposures;
             for(int i=0; i<total; i++) {
                 if(samples[i] < t_min || samples[i] > t_max) {
-                    samples[i] = -1.0f;
+                    samples[i] = -1;
                 }
             }
         }
@@ -217,6 +229,10 @@ public:
      */
     int *get() {
         return samples;
+    }
+
+    int getNSamples() const {
+        return nSamples;
     }
 
 };
