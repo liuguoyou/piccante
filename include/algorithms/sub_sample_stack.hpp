@@ -208,7 +208,7 @@ public:
 
             for(int i=0; i<total; i++) {
                 if(samples[i] < t_min || samples[i] > t_max) {
-                    samples[i] = -1.0f;                    
+                    samples[i] = -1;
                 }
             }
         }
