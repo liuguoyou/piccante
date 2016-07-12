@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
         printf("Ok\n");
 
         pic::CameraResponseFunction crf;
-        pic::Image *imgOut = nullptr;
+        pic::Image *imgOut = NULL;
         //Estimating the camera response function
         printf("Estimating the camera response function... ");
         fflush(stdout);
@@ -75,12 +75,10 @@ int main(int argc, char *argv[])
         if(imgOut != NULL) {
             imgOut->Write("../data/output/hdr_generation_image_log.hdr");
             pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
-            imgToneMapped_reinhard->Write("../data/output/ldr_generation_image_log.png", pic::LT_NOR_GAMMA);
+            imgToneMapped_reinhard->Write("../data/output/image_debevec_crf_tone_mapped.png", pic::LT_NOR_GAMMA);
             delete imgToneMapped_reinhard;
             delete imgOut;
         }
-
-
 
         //Estimating the polynomial camera response function
         printf("Estimating the polynomial camera response function... ");
@@ -100,7 +98,7 @@ int main(int argc, char *argv[])
             imgOut->Write("../data/output/hdr_generation_image_poly.hdr");
 
             pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
-            imgToneMapped_reinhard->Write("../data/output/ldr_generation_image_poly.png", pic::LT_NOR_GAMMA);
+            imgToneMapped_reinhard->Write("../data/output/image_mitusunaga_crf_tone_mapped.png", pic::LT_NOR_GAMMA);
             delete imgToneMapped_reinhard;
 
             delete imgOut;

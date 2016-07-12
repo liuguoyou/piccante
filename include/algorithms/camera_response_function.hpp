@@ -45,7 +45,7 @@ protected:
     /**
     * \brief gsolve computes the inverse CRF of a camera.
     */
-    float *gsolve(unsigned char *samples, float *log_exposure, float lambda,
+    float *gsolve(int *samples, float *log_exposure, float lambda,
                   int nSamples, int nExposure)
     {
 		#ifndef PIC_DISABLE_EIGEN
@@ -118,7 +118,7 @@ protected:
      * @param max_iterations    Maximum number of iterations.
      * @return The error as in the paper.
      */
-    float MitsunagaNayarClassic(unsigned char *samples, const std::size_t nSamples, const std::vector<float> &exposures,
+    float MitsunagaNayarClassic(int *samples, const std::size_t nSamples, const std::vector<float> &exposures,
                                 std::vector<float> &coefficients, std::vector<float> &R,
                                 const float eps, const std::size_t max_iterations)
     {
@@ -242,7 +242,7 @@ protected:
      * @param max_iterations    Maximum number of iterations.
      * @return The error as in the paper.
      */
-    float MitsunagaNayarFull(unsigned char *samples, const std::size_t nSamples, const std::vector<float> &exposures,
+    float MitsunagaNayarFull(int *samples, const std::size_t nSamples, const std::vector<float> &exposures,
                                 std::vector<float> &coefficients, std::vector<std::vector<float>> &R,
                                 const float eps, const std::size_t max_iterations)
     {
@@ -387,6 +387,27 @@ protected:
         poly.clear();
     }
 
+    /**
+     * @brief stackCheck
+     * @param stack
+     * @return
+     */
+    bool stackCheck(ImageVec &stack)
+    {
+        if(stack.size() < 2) {
+            return false;
+        }
+
+        for (size_t i=1; i<stack.size(); i++) {
+            if (!stack[0]->SimilarType(stack[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    SubSampleStack          stackOut;
     IMG_LIN                 type_linearization;
     float                   w[256];
 
@@ -596,7 +617,9 @@ public:
      */
     void DebevecMalik(ImageVec stack, CRF_WEIGHT type = CW_DEB97, int nSamples = 256, float lambda = 20.0f)
     {
-        if(stack.empty()) {
+        Destroy();
+
+        if(!stackCheck(stack)) {
             return;
         }
 
@@ -604,12 +627,12 @@ public:
             nSamples = 256;
         }
 
-        Destroy();
-
         this->type_linearization = IL_LUT_8_BIT;
 
         //Subsampling the image stack
-        unsigned char *samples = SubSampleStack::Spatial(stack, nSamples);
+        stackOut.Compute(stack, nSamples, false);
+
+        int *samples = stackOut.get();
         
         //Computing CRF using Debevec and Malik
         int channels = stack[0]->channels;
@@ -628,12 +651,11 @@ public:
             log_exposure[i] = logf(stack[i]->exposure);
         }
 
-        int stride = nSamples * nExposure;
-
         #ifdef PIC_DEBUG
             printf("nSamples: %d\n", nSamples);
         #endif
 
+        int stride = nSamples * nExposure;
         for(int i = 0; i < channels; i++) {
             float *icrf_channel = gsolve(&samples[i * stride], log_exposure, lambda, nSamples,
                                         nExposure);
@@ -660,23 +682,27 @@ public:
     {
         Destroy();
 
-        if(stack.size() < 2)
+        if(!stackCheck(stack)) {
             return;
+        }
 
-        if(nSamples < 1)
+        if(nSamples < 1) {
             nSamples = 256;
+        }
 
         type_linearization = IL_POLYNOMIAL;
 
         //Sort the array by exposure
         std::sort(stack.begin(), stack.end(), [](const Image *l, const Image *r)->bool{
-            if (!l || !r)
+            if (!l || !r) {
                 return false;
+            }
             return l->exposure < r->exposure;
         });
 
         //Subsampling the image stack
-        unsigned char *samples = SubSampleStack::Grossberg(stack, nSamples);
+        stackOut.Compute(stack, nSamples, true);
+        int *samples = stackOut.get();
 
         //Computing CRF using Mitsunaga and Nayar
         int channels = stack[0]->channels;
@@ -684,8 +710,9 @@ public:
         std::size_t nExposures = stack.size();
 
         std::vector<float> exposures(nExposures, 0.f);
-        for (std::size_t t = 0; t < nExposures; ++t)
+        for (std::size_t t = 0; t < nExposures; ++t) {
             exposures[t] = stack[t]->exposure;
+        }
 
         int stride = nSamples * nExposures;
 
@@ -697,23 +724,28 @@ public:
         for (int i = 0; i < channels; ++i) {
             if (polynomial_degree > 0) {
                 poly[i].assign(polynomial_degree + 1, 0.f);
-                if (full)
+                if (full) {
                     error = MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, poly[i], RR, eps, max_iterations);
-                else
+                } else {
                     error = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
-            } else if (polynomial_degree < -1) {
-                error = std::numeric_limits<float>::infinity();
-                float tmpError;
-                std::vector<float> tmpCoefficients;
-                for (int degree = 1; degree <= -polynomial_degree; ++degree) {
-                    tmpCoefficients.resize(degree + 1);
-                    if (full)
-                        tmpError = MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, tmpCoefficients, RR, eps, max_iterations);
-                    else
-                        tmpError = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, tmpCoefficients, R, eps, max_iterations);
-                    if (tmpError < error) {
-                        error = tmpError;
-                        poly[i] = std::move(tmpCoefficients);
+                }
+            } else {
+                if (polynomial_degree < -1) {
+                    error = std::numeric_limits<float>::infinity();
+                    float tmpError;
+                    std::vector<float> tmpCoefficients;
+                    for (int degree = 1; degree <= -polynomial_degree; ++degree) {
+                        tmpCoefficients.resize(degree + 1);
+                        if (full) {
+                            tmpError = MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, tmpCoefficients, RR, eps, max_iterations);
+                        } else {
+                            tmpError = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, tmpCoefficients, R, eps, max_iterations);
+                        }
+
+                        if (tmpError < error) {
+                            error = tmpError;
+                            poly[i] = std::move(tmpCoefficients);
+                        }
                     }
                 }
             }
@@ -728,20 +760,14 @@ public:
      * @param stack
      * @param maxIterations
      */
-    void Robertson(const ImageVec stack, const size_t maxIterations = 50)
+    void Robertson(ImageVec &stack, const size_t maxIterations = 50)
     {
-        // checks
-        if (stack.size() < 2) {
+        Destroy();
+
+        if(!stackCheck(stack)) {
             return;
         }
 
-        for (size_t i=1; i<stack.size(); i++) {
-            if (!stack[0]->SimilarType(stack[i])) {
-                return;
-            }
-        }
-
-        this->Destroy();
         this->type_linearization = IL_LUT_8_BIT;
 
         const int channels   = stack[0]->channels;
@@ -749,7 +775,7 @@ public:
 
         // precompute robertson weighting function
         for (size_t i=0; i<256; i++) {
-            this->w[i] = pic::WeightFunction(i/255.0, pic::CW_ROBERTSON);
+            this->w[i] = pic::WeightFunction(i / 255.0, pic::CW_ROBERTSON);
         }
 
         // avoid saturation
@@ -847,18 +873,15 @@ public:
                     size_t midIdx = minIdx+(maxIdx-minIdx)/2;
                     float  mid = fun[midIdx];
 
-                    if (mid == 0.0f)
-                    {
+                    if (mid == 0.0f) {
                         // find first non-zero middle response
-                        while (midIdx < maxIdx && fun[midIdx] == 0.0f)
-                        {
+                        while (midIdx < maxIdx && fun[midIdx] == 0.0f) {
                             midIdx++;
                         }
                         mid = fun[midIdx];
                     }
 
-                    if (mid != 0.0f)
-                    {
+                    if (mid != 0.0f) {
                         BufferDiv(fun, 256, mid);
                     }
                 }
@@ -880,16 +903,18 @@ public:
                         int m = qslice[ind];
 
                         // compute max/min time for under/over exposed pixels
-                        if (m > maxM)
+                        if (m > maxM) {
                             mint = std::min(mint, t);
-                        if (m < minM)
+                        }
+
+                        if (m < minM) {
                             maxt = std::max(maxt, t);
+                        }
 
                         // to avoid ghosting
                         int mLow  = qstack[lower [s]][ind];
                         int mHigh = qstack[higher[s]][ind];
-                        if (mLow > m || mHigh < m)
-                        {
+                        if (mLow > m || mHigh < m) {
                             continue;
                         }
 

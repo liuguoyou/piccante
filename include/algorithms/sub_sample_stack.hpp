@@ -31,43 +31,21 @@ namespace pic {
  */
 class SubSampleStack
 {
-public:
-    
-    /**
-     * @brief SubSampleStack
-     */
-    SubSampleStack(ImageVec stack, int &nSamples)
-    {
-        
-    }
+protected:
 
     /**
     * \brief This function creates a low resolution version of the stack using Grossberg and Nayar sampling.
     * \param stack is a stack of Image* at different exposures
-    * \param nSamples output number of samples
-    * \return samples an array of unsigned char values which is the low resolution stack
     */
-    static unsigned char *Grossberg(ImageVec stack, int &nSamples)
+    void Grossberg(ImageVec &stack)
     {
-        if(stack.size() < 1) {
-            return NULL;
-        }
-
-        if(nSamples < 1) {
-            nSamples = 256;
-        }
-
-        int channels  = stack[0]->channels;
-        unsigned int exposures = stack.size();
-
-        Histogram *h = new Histogram[exposures * channels];
-
-        int c = 0;
-
         #ifdef PIC_DEBUG
             printf("Computing histograms...");
         #endif
 
+        Histogram *h = new Histogram[exposures * channels];
+
+        int c = 0;
         for(int j = 0; j < channels; j++) {
             for(unsigned int i = 0; i < exposures; i++) {
                 h[c].Calculate(stack[i], VS_LDR, 256, j);
@@ -80,16 +58,14 @@ public:
             printf("Ok\n");
         #endif
 
-        unsigned char *samples = new unsigned char[nSamples * channels * exposures];
-
         #ifdef PIC_DEBUG
             printf("Sampling...");
         #endif
 
-        c = 0;
+        samples = new int[nSamples * channels * exposures];
 
         float div = float(nSamples - 1);
-
+        c = 0;
         for(int k = 0; k < channels; k++) {
             for(int i = 0; i < nSamples; i++) {
 
@@ -114,30 +90,17 @@ public:
         #endif
 
         delete[] h;
-
-        return samples;
     }
 
     /**
      * @brief Spatial creates a low resolution version of the stack.
-    * \param stack is a stack of Image* at different exposures
-    * \param nSamples output number of samples
-    * \return samples an array of unsigned char values which is the low resolution stack
-     * @return
+     * @param stack is a stack of Image* at different exposures
+     * @param sub_type
      */
-    static unsigned char *Spatial(ImageVec stack, int &nSamples, SAMPLER_TYPE sub_type = ST_MONTECARLO_S)
+    void Spatial(ImageVec &stack, SAMPLER_TYPE sub_type = ST_MONTECARLO_S)
     {
-        if(stack.size() < 1) {
-            return NULL;
-        }
-
-        if(nSamples < 1) {
-            nSamples = 256;
-        }
-
         int width    = stack[0]->width;
         int height   = stack[0]->height;
-        int channels = stack[0]->channels;
 
         Vec<2, int> vec(width, height);
 
@@ -153,7 +116,7 @@ public:
             printf("--subSample samples: %d \t \t old samples: %d\n", nSamples, oldNSamples);
         #endif
 
-        unsigned char *samples = new unsigned char[nSamples * channels * stack.size()];
+        samples = new int[nSamples * channels * exposures];
 
         int c = 0;
 
@@ -173,9 +136,89 @@ public:
         }
 
         delete sampler;
+    }
 
+
+    bool bCheck;
+
+    unsigned int exposures;
+    int channels;
+    int nSamples;
+    int total;
+    int *samples;
+
+public:
+    
+    /**
+     * @brief SubSampleStack
+     */
+    SubSampleStack()
+    {
+        total = 0;
+        exposures = 0;
+        channels = 0;
+        nSamples = 0;
+        samples = NULL;
+    }
+
+    ~SubSampleStack()
+    {
+        if(samples != NULL) {
+            delete[] samples;
+        }
+    }
+
+
+    /**
+     * @brief Compute
+     * @param stack
+     * @param nSamples output number of samples
+     * @param bSpatial
+     * @param sub_type
+     */
+    void Compute(ImageVec &stack, int nSamples, bool bRemoveOutliers, bool bSpatial = false, SAMPLER_TYPE sub_type = ST_MONTECARLO_S)
+    {
+        bCheck = stack.size() > 1;
+        bCheck = bCheck && (nSamples > 1);
+
+        if(!bCheck) {
+            return;
+        }
+
+        this->nSamples = nSamples;
+        this->channels  = stack[0]->channels;
+        this->exposures = stack.size();
+
+        if(bSpatial) {
+            Spatial(stack, sub_type);
+        } else {
+            Grossberg(stack);
+        }
+
+        if(bRemoveOutliers) {
+            float t_min_f = 0.05f;
+            float t_max_f = 1.0f - t_min_f;
+
+            int t_min = int(t_min_f * 255.0f);
+            int t_max = int(t_max_f * 255.0f);
+
+            total = this->nSamples * this->channels * this->exposures;
+            for(int i=0; i<total; i++) {
+                if(samples[i] < t_min || samples[i] > t_max) {
+                    samples[i] = -1.0f;
+                }
+            }
+        }
+    }
+
+    /**
+     * @brief get
+     * @return
+     */
+    int *get() {
         return samples;
     }
+
 };
 
 } // end namespace pic
