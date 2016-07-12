@@ -85,26 +85,30 @@ int main(int argc, char *argv[])
         printf("Estimating the polynomial camera response function... ");
         fflush(stdout);
 
-        crf.MitsunagaNayar(stack_vec, -6, 256, false);
-        printf("Ok.\n");
+        bool ok = crf.MitsunagaNayar(stack_vec, -6, 256, false);
 
-        printf("Assembling the different exposure images... ");
-        fflush(stdout);
-        pic::FilterAssembleHDR mergerPoly(&crf, pic::CW_DEB97, pic::HRD_LOG);
-        imgOut = mergerPoly.ProcessP(stack_vec, NULL);
+        if (ok) {
+            printf("Ok.\n");
 
-        printf("Ok\n");
+            printf("Assembling the different exposure images... ");
+            fflush(stdout);
+            pic::FilterAssembleHDR mergerPoly(&crf, pic::CW_DEB97, pic::HRD_LOG);
+            imgOut = mergerPoly.ProcessP(stack_vec, NULL);
 
-        if(imgOut != NULL) {
-            imgOut->Write("../data/output/hdr_generation_image_poly.hdr");
+            printf("Ok\n");
 
-            pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
-            imgToneMapped_reinhard->Write("../data/output/image_mitusunaga_crf_tone_mapped.png", pic::LT_NOR_GAMMA);
-            delete imgToneMapped_reinhard;
+            if(imgOut != NULL) {
+                imgOut->Write("../data/output/hdr_generation_image_poly.hdr");
 
-            delete imgOut;
+                pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
+                imgToneMapped_reinhard->Write("../data/output/image_mitusunaga_crf_tone_mapped.png", pic::LT_NOR_GAMMA);
+                delete imgToneMapped_reinhard;
+
+                delete imgOut;
+            }
+        } else {
+            printf("Camera Respose Function not computed.\n");
         }
-
 
     } else {
         printf("No, the files are not valid!\n");

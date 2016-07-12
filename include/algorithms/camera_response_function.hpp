@@ -654,6 +654,7 @@ public:
         stackOut.Compute(stack, nSamples, false);
 
         int *samples = stackOut.get();
+        nSamples = stackOut.getNSamples();
         
         //Computing CRF using Debevec and Malik
         int channels = stack[0]->channels;
@@ -696,14 +697,15 @@ public:
      *          the original paper (only among successive exposures).
      * @param eps Threshold on the difference among successive approximations for stopping the computation.
      * @param max_iterations Stop the computation after this number of iterations.
+     * @return true if successfully computed, false otherwise.
      */
-    void MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, int nSamples = 256, const bool full = false,
+    bool MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, int nSamples = 256, const bool full = false,
                         const float eps = 0.0001f, const std::size_t max_iterations = 100)
     {
         Destroy();
 
         if(!stackCheck(stack)) {
-            return;
+            return false;
         }
 
         if(nSamples < 1) {
@@ -725,6 +727,9 @@ public:
         int *samples = stackOut.get();
         nSamples = stackOut.getNSamples();
 
+        if (nSamples < 1) {
+            return false;
+        }
 
         //Computing CRF using Mitsunaga and Nayar
         int channels = stack[0]->channels;
@@ -746,12 +751,13 @@ public:
 
         if (polynomial_degree > 0) {
             for (int i = 0; i < channels; ++i) {
+                error = 0.f;
                 for (int i = 0; i < channels; ++i) {
                     poly[i].assign(polynomial_degree + 1, 0.f);
                     if (full) {
-                        error = MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, poly[i], RR, eps, max_iterations);
+                        error += MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, poly[i], RR, eps, max_iterations);
                     } else {
-                        error = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
+                        error += MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
                     }
                 }
             }
@@ -775,6 +781,8 @@ public:
                 }
             }
         }
+
+        return error < std::numeric_limits<float>::infinity();
     }
 
     /**
