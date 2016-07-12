@@ -58,11 +58,12 @@ protected:
             printf("Ok\n");
         #endif
 
+        total = this->nSamples * this->channels * this->exposures;
+        samples = new int[total];
+
         #ifdef PIC_DEBUG
             printf("Sampling...");
         #endif
-
-        samples = new int[nSamples * channels * exposures];
 
         float div = float(nSamples - 1);
         c = 0;
@@ -80,6 +81,7 @@ protected:
                     float *ptr = std::upper_bound(&bin_c[0], &bin_c[255], u);
 
                     samples[c] = CLAMPi((int)(ptr - bin_c), 0, 255);
+                    printf("%f\n", samples[c]);
                     c++;
                 }
             }
@@ -110,13 +112,14 @@ protected:
             int oldNSamples = nSamples;
         #endif
 
-        nSamples = sampler->getSamplesPerLevel(0);
+        this->nSamples = sampler->getSamplesPerLevel(0);
+
+        total = this->nSamples * this->channels * this->exposures;
+        samples = new int[total];
 
         #ifdef PIC_DEBUG
             printf("--subSample samples: %d \t \t old samples: %d\n", nSamples, oldNSamples);
         #endif
-
-        samples = new int[nSamples * channels * exposures];
 
         int c = 0;
 
@@ -126,7 +129,7 @@ protected:
                 int x, y;
                 sampler->getSampleAt(0, i, x, y);
 
-                for(unsigned int j = 0; j < stack.size(); j++) {
+                for(unsigned int j = 0; j < exposures; j++) {
                     float fetched = (*stack[j])(x, y)[k];
                     float tmp = lround(fetched * 255.0f);
                     samples[c] = CLAMPi(int(tmp), 0, 255);
@@ -138,14 +141,19 @@ protected:
         delete sampler;
     }
 
-
-    bool bCheck;
-
     unsigned int exposures;
     int channels;
     int nSamples;
     int total;
     int *samples;
+
+    void Destroy()
+    {
+        if(samples != NULL) {
+            delete[] samples;
+        }
+    }
+
 
 public:
     
@@ -163,11 +171,8 @@ public:
 
     ~SubSampleStack()
     {
-        if(samples != NULL) {
-            delete[] samples;
-        }
+        Destroy();
     }
-
 
     /**
      * @brief Compute
@@ -178,16 +183,15 @@ public:
      */
     void Compute(ImageVec &stack, int nSamples, bool bRemoveOutliers, bool bSpatial = false, SAMPLER_TYPE sub_type = ST_MONTECARLO_S)
     {
-        bCheck = stack.size() > 1;
-        bCheck = bCheck && (nSamples > 1);
-
-        if(!bCheck) {
+        if(!((stack.size() > 1 && (nSamples > 1)))) {
             return;
         }
 
         this->nSamples = nSamples;
         this->channels  = stack[0]->channels;
         this->exposures = stack.size();
+
+        Destroy();
 
         if(bSpatial) {
             Spatial(stack, sub_type);
@@ -196,16 +200,15 @@ public:
         }
 
         if(bRemoveOutliers) {
-            float t_min_f = 0.05f;
+            float t_min_f = 0.01f;
             float t_max_f = 1.0f - t_min_f;
 
             int t_min = int(t_min_f * 255.0f);
             int t_max = int(t_max_f * 255.0f);
 
-            total = this->nSamples * this->channels * this->exposures;
             for(int i=0; i<total; i++) {
                 if(samples[i] < t_min || samples[i] > t_max) {
-                    samples[i] = -1.0f;
+                    samples[i] = -1.0f;                    
                 }
             }
         }
@@ -215,10 +218,18 @@ public:
      * @brief get
      * @return
      */
-    int *get() {
+    int *get()
+    {
         return samples;
     }
 
+    void print()
+    {
+        for(int i=0;i<total;i++) {
+           printf("%d\n", samples[i]);
+        }
+
+    }
 };
 
 } // end namespace pic
