@@ -726,13 +726,16 @@ public:
         std::vector<std::vector<float>> RR(nExposures - 1, std::vector<float>(nExposures - 1));
 
         poly.resize(channels);
-        if (polynomial_degree > 0) {
-            for (int i = 0; i < channels; ++i) {
-                poly[i].assign(polynomial_degree + 1, 0.f);
-                if (full) {
-                    error = MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, poly[i], RR, eps, max_iterations);
-                } else {
-                    error = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
+
+        for (int i = 0; i < channels; ++i) {
+            if (polynomial_degree > 0) {
+                for (int i = 0; i < channels; ++i) {
+                    poly[i].assign(polynomial_degree + 1, 0.f);
+                    if (full) {
+                        error = MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, poly[i], RR, eps, max_iterations);
+                    } else {
+                        error = MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
+                    }
                 }
             } else {
                 if (polynomial_degree < -1) {
