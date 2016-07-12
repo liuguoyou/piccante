@@ -59,33 +59,33 @@ int main(int argc, char *argv[])
         pic::CameraResponseFunction crf;
         pic::Image *imgOut = NULL;
 
-//        //Estimating the camera response function
-//        printf("Estimating the camera response function... ");
-//        fflush(stdout);
+        //Estimating the camera response function
+        printf("Estimating the camera response function... ");
+        fflush(stdout);
 
-//        crf.DebevecMalik(stack_vec);
-//        printf("Ok\n");
+        crf.DebevecMalik(stack_vec);
+        printf("Ok\n");
 
-//        printf("Assembling the different exposure images... ");
-//        fflush(stdout);
-//        pic::FilterAssembleHDR merger(&crf, pic::CW_DEB97, pic::HRD_LOG);
-//        imgOut = merger.ProcessP(stack_vec, NULL);
+        printf("Assembling the different exposure images... ");
+        fflush(stdout);
+        pic::FilterAssembleHDR merger(&crf, pic::CW_DEB97, pic::HRD_LOG);
+        imgOut = merger.ProcessP(stack_vec, NULL);
 
-//        printf("Ok\n");
+        printf("Ok\n");
 
-//        if(imgOut != NULL) {
-//            imgOut->Write("../data/output/hdr_generation_image_log.hdr");
-//            pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
-//            imgToneMapped_reinhard->Write("../data/output/image_debevec_crf_tone_mapped.png", pic::LT_NOR_GAMMA);
-//            delete imgToneMapped_reinhard;
-//            delete imgOut;
-//        }
+        if(imgOut != NULL) {
+            imgOut->Write("../data/output/hdr_generation_image_log.hdr");
+            pic::Image *imgToneMapped_reinhard = pic::ReinhardTMO(imgOut);
+            imgToneMapped_reinhard->Write("../data/output/image_debevec_crf_tone_mapped.png", pic::LT_NOR_GAMMA);
+            delete imgToneMapped_reinhard;
+            delete imgOut;
+        }
 
         //Estimating the polynomial camera response function
         printf("Estimating the polynomial camera response function... ");
         fflush(stdout);
 
-        bool ok = crf.MitsunagaNayar(stack_vec, -6, 256, false);
+        bool ok = crf.MitsunagaNayar(stack_vec, -6, 256, true, 0.04f);
 
         if (ok) {
             printf("Ok.\n");

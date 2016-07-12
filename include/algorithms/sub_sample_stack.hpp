@@ -184,7 +184,7 @@ public:
      * @param bSpatial
      * @param sub_type
      */
-    void Compute(ImageVec &stack, int nSamples, bool bRemoveOutliers, bool bSpatial = false, SAMPLER_TYPE sub_type = ST_MONTECARLO_S)
+    void Compute(ImageVec &stack, int nSamples, float alpha = 0.f, bool bSpatial = false, SAMPLER_TYPE sub_type = ST_MONTECARLO_S)
     {
         Destroy();
 
@@ -196,16 +196,14 @@ public:
         this->channels  = stack[0]->channels;
         this->exposures = stack.size();
 
-        Destroy();
-
         if(bSpatial) {
             Spatial(stack, sub_type);
         } else {
             Grossberg(stack);
         }
 
-        if(bRemoveOutliers) {
-            float t_min_f = 0.01f;
+        if(alpha > 0.f && alpha <= 0.5f) {
+            float t_min_f = alpha;
             float t_max_f = 1.0f - t_min_f;
 
             int t_min = int(t_min_f * 255.0f);

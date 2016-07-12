@@ -113,14 +113,10 @@ protected:
      * @param nSamples          Number of samples, for each exposure.
      * @param exposures         Array of exposure timings (size: #exposures = 'Q' as in the Mitsunaga & Nayar paper).
      * @param coefficients      The output coefficients ('c' in the paper) resulting from the computation.
-     * @param R                 The output estimated exposure ratios, i.e. R[q] = 'R_{q,q+1}' as in the paper.
-     * @param eps               Threshold for stopping the approximation process.
-     * @param max_iterations    Maximum number of iterations.
      * @return The error as in the paper.
      */
     float MitsunagaNayarClassic(int *samples, const std::size_t nSamples, const std::vector<float> &exposures,
-                                std::vector<float> &coefficients, std::vector<float> &R,
-                                const float eps, const std::size_t max_iterations)
+                                std::vector<float> &coefficients)
     {
         float eval, val;
         const std::size_t Q = exposures.size();
@@ -130,33 +126,30 @@ protected:
 
         for (float &_c : coefficients)
             _c = 0.f;
-        R.assign(Q < 2 ? 0 : Q - 1, 1.f);
-        for (int q = 0; q < R.size(); ++q)
-            R[q] = exposures[q] / exposures[q+1];
+
         if (!samples || Q < 2 || coefficients.size() < 2)
             return std::numeric_limits<float>::infinity();
 
-        //Precompute test with exponentials
-        std::vector<Eigen::VectorXf> test(256, Eigen::VectorXf::Zero(N+1));
-        for (std::size_t i = 0; i < 256; ++i) {
-            test[i][0] = 1.f;
-            for (std::size_t n = 1; n <= N; ++n)
-                test[i][n] = (float)(i / 255.f) * test[i][n-1];
-        }
+        std::vector<float> R(Q < 2 ? 0 : Q - 1, 1.f);
+        for (int q = 0; q < R.size(); ++q)
+            R[q] = exposures[q] / exposures[q+1];
 
         //Check valid samples
         std::vector<std::vector<float>> g(nSamples, std::vector<float>(Q, 0.f));
         std::size_t P = 0;
         for (std::size_t p = 0; p < nSamples; ++p) {
-            bool valid = true;
-            for (std::size_t q = 0; q < Q; ++q)
-                if (samples[p * Q + q] < 0 || samples[p * Q + q] > 255) {
-                    valid = false;
+            bool valid = false;
+            for (std::size_t q = 0; q < Q-1; ++q)
+                if (samples[p * Q + q] >= 0 && samples[p * Q + q+1] >= 0) {
+                    valid = true;
                     break;
                 }
             if (valid) {
                 for (std::size_t q = 0; q < Q; ++q)
-                    g[P][q] = samples[p * Q + q] / 255.f;
+                    if (samples[p * Q + q] >= 0)
+                        g[P][q] = samples[p * Q + q] / 255.f;
+                    else
+                        g[P][q] = -1.f;
                 ++P;
             }
         }
@@ -175,55 +168,41 @@ protected:
                 for (std::size_t n = 1; n <= N; ++n)
                     M[p][q][n] = g[p][q] * M[p][q][n-1];
             }
-        g.clear();
 
         std::vector<std::vector<std::vector<float>>> d(P,
                                                        std::vector<std::vector<float>>(Q-1,
                                                                                        std::vector<float>(N+1, 1.f)));
         Eigen::MatrixXf A = Eigen::MatrixXf::Zero(N, N);
         Eigen::VectorXf x, b = Eigen::VectorXf::Zero(N);
-        Eigen::VectorXf c(N+1), prev_c = Eigen::VectorXf::Zero(N+1);
+        Eigen::VectorXf c(N+1);
 
-        std::size_t iter = 0;
-
-        do {
-            //Compute d
-            for (std::size_t p = 0; p < P; ++p)
-                for (std::size_t q = 0; q < Q-1; ++q)
+        //Compute d
+        for (std::size_t p = 0; p < P; ++p)
+            for (std::size_t q = 0; q < Q-1; ++q)
+                if (g[p][q] >= 0.f && g[p][q+1] >= 0.f)
                     for (std::size_t n = 0; n <= N; ++n)
                         d[p][q][n] = M[p][q][n] - R[q] * M[p][q+1][n];
+                else
+                    d[p][q].assign(N+1, 0.f);
 
-            //Build the matrix A of the linear system
-            A.setZero(N, N);
-            for (std::size_t i = 0; i < N; ++i)
-                for (std::size_t j = 0; j < N; ++j)
-                    for (std::size_t p = 0; p < P; ++p)
-                        for (std::size_t q = 0; q < Q - 1; ++q)
-                            A(i, j) += d[p][q][i] * (d[p][q][j] - d[p][q][N]);
-
-            //Build the vector of knowns b
-            b.setZero(N);
-            for (std::size_t i = 0; i < N; ++i)
+        //Build the matrix A of the linear system
+        A.setZero(N, N);
+        for (std::size_t i = 0; i < N; ++i)
+            for (std::size_t j = 0; j < N; ++j)
                 for (std::size_t p = 0; p < P; ++p)
                     for (std::size_t q = 0; q < Q - 1; ++q)
-                        b(i) -= Mmax * d[p][q][i] * d[p][q][N];
+                        A(i, j) += d[p][q][i] * (d[p][q][j] - d[p][q][N]);
 
-            //Solve the linear system
-            x = A.partialPivLu().solve(b);
-            c << x, Mmax - x.sum();
+        //Build the vector of knowns b
+        b.setZero(N);
+        for (std::size_t i = 0; i < N; ++i)
+            for (std::size_t p = 0; p < P; ++p)
+                for (std::size_t q = 0; q < Q - 1; ++q)
+                    b(i) -= Mmax * d[p][q][i] * d[p][q][N];
 
-            //Evaluate approximation increment
-            eval = std::numeric_limits<float>::lowest();
-            for (const Eigen::VectorXf &_M : test) {
-                val = std::abs((c - prev_c).dot(_M));
-                if (val > eval)
-                    eval = val;
-            }
-
-            prev_c = c;
-
-            ++iter;
-        } while (eval > eps && iter < max_iterations);
+        //Solve the linear system
+        x = A.partialPivLu().solve(b);
+        c << x, Mmax - x.sum();
 
         for (std::size_t n = 0; n <= N; ++n)
             coefficients[n] = c[n];
@@ -232,10 +211,12 @@ protected:
         eval = 0.f;
         for (std::size_t q = 0; q < Q-1; ++q)
             for (std::size_t p = 0; p < P; ++p) {
-                val = 0.f;
-                for (std::size_t n = 0; n <= N; ++n)
-                    val += coefficients[n] * (M[p][q][n] - R[q] * M[p][q+1][n]);
-                eval += val * val;
+                if (g[p][q] >= 0.f && g[p][q+1] >= 0.f) {
+                    val = 0.f;
+                    for (std::size_t n = 0; n <= N; ++n)
+                        val += coefficients[n] * (M[p][q][n] - R[q] * M[p][q+1][n]);
+                    eval += val * val;
+                }
             }
 
         return eval;
@@ -247,14 +228,10 @@ protected:
      * @param nSamples          Number of samples, for each exposure.
      * @param exposures         Array of exposure timings (size: #exposures = 'Q' as in the Mitsunaga & Nayar paper).
      * @param coefficients      The output coefficients ('c' in the paper) resulting from the computation.
-     * @param R                 The output estimated exposure ratios, i.e. R[q1][q2] = 'R_{q1,q2}' as in the book.
-     * @param eps               Threshold for stopping the approximation process.
-     * @param max_iterations    Maximum number of iterations.
      * @return The error as in the paper.
      */
     float MitsunagaNayarFull(int *samples, const std::size_t nSamples, const std::vector<float> &exposures,
-                                std::vector<float> &coefficients, std::vector<std::vector<float>> &R,
-                                const float eps, const std::size_t max_iterations)
+                                std::vector<float> &coefficients)
     {
         float eval, val;
         const std::size_t Q = exposures.size();
@@ -264,7 +241,7 @@ protected:
 
         for (float &_c : coefficients)
             _c = 0.f;
-        R.assign(Q < 2 ? 0 : Q - 1, std::vector<float>(Q < 2 ? 0 : Q - 1, 1.f));
+        std::vector<std::vector<float>> R(Q < 2 ? 0 : Q, std::vector<float>(Q < 2 ? 0 : Q, 1.f));
         for (int q1 = 0; q1 < R.size(); ++q1)
             for (int q2 = 0; q2 < R[q1].size(); ++q2) {
                 if (q2 == q1)
@@ -275,27 +252,20 @@ protected:
         if (!samples || Q < 2 || coefficients.size() < 2)
             return std::numeric_limits<float>::infinity();
 
-        //Precompute test with exponentials
-        std::vector<Eigen::VectorXf> test(256, Eigen::VectorXf::Zero(N+1));
-        for (std::size_t i = 0; i < 256; ++i) {
-            test[i][0] = 1.f;
-            for (std::size_t n = 1; n <= N; ++n)
-                test[i][n] = (float)(i / 255.f) * test[i][n-1];
-        }
-
         //Check valid samples
         std::vector<std::vector<float>> g(nSamples, std::vector<float>(Q, 0.f));
         std::size_t P = 0;
         for (std::size_t p = 0; p < nSamples; ++p) {
-            bool valid = true;
+            std::size_t valid = 0;
             for (std::size_t q = 0; q < Q; ++q)
-                if (samples[p * Q + q] < 0) {
-                    valid = false;
-                    break;
-                }
-            if (valid) {
+                if (samples[p * Q + q] >= 0)
+                    ++valid;
+            if (valid > 1) {
                 for (std::size_t q = 0; q < Q; ++q)
-                    g[P][q] = samples[p * Q + q] / 255.f;
+                    if (samples[p * Q + q] >= 0)
+                        g[P][q] = samples[p * Q + q] / 255.f;
+                    else
+                        g[P][q] = -1.f;
                 ++P;
             }
         }
@@ -315,78 +285,66 @@ protected:
                     M[p][q][n] = g[p][q] * M[p][q][n-1];
             }
 
-        g.clear();
-
         std::vector<std::vector<std::vector<std::vector<float>>>> d(P,
-                                                                    std::vector<std::vector<std::vector<float>>>(Q-1,
-                                                                                std::vector<std::vector<float>>(Q-1,
+                                                                    std::vector<std::vector<std::vector<float>>>(Q,
+                                                                                std::vector<std::vector<float>>(Q,
                                                                                             std::vector<float>(N+1, 1.f))));
         Eigen::MatrixXf A = Eigen::MatrixXf::Zero(N, N);
         Eigen::VectorXf x, b = Eigen::VectorXf::Zero(N);
-        Eigen::VectorXf c(N+1), prev_c = Eigen::VectorXf::Zero(N+1);
+        Eigen::VectorXf c(N+1);
 
-        std::size_t iter = 0;
-
-        do {
-            //Compute d
-            for (std::size_t p = 0; p < P; ++p)
-                for (std::size_t q1 = 0; q1 < Q-1; ++q1)
-                    for (std::size_t q2 = 0; q2 < Q-1; ++q2) {
-                        d[p][q1][q2].assign(N+1, 0.f);
-                        if (q2 != q1)
-                            for (std::size_t n = 0; n <= N; ++n)
+        //Compute d
+        for (std::size_t p = 0; p < P; ++p)
+            for (std::size_t q1 = 0; q1 < Q; ++q1)
+                for (std::size_t q2 = 0; q2 < Q; ++q2) {
+                    d[p][q1][q2].assign(N+1, 0.f);
+                    if (q2 != q1)
+                        for (std::size_t n = 0; n <= N; ++n) {
+                            if (g[p][q1] >= 0.f && g[p][q2] >= 0.f)
                                 d[p][q1][q2][n] = M[p][q1][n] - R[q1][q2] * M[p][q2][n];
-                    }
+                            else
+                                d[p][q1][q2][n] = 0.f;
+                        }
+                }
 
-            //Build the matrix A of the linear system
-            A.setZero(N, N);
-            for (std::size_t i = 0; i < N; ++i)
-                for (std::size_t j = 0; j < N; ++j)
-                    for (std::size_t p = 0; p < P; ++p)
-                        for (std::size_t q1 = 0; q1 < Q - 1; ++q1)
-                            for (std::size_t q2 = 0; q2 < Q - 1; ++q2)
-                                if (q2 != q1)
-                                    A(i, j) += d[p][q1][q2][i] * (d[p][q1][q2][j] - d[p][q1][q2][N]);
-
-            //Build the vector of knowns b
-            b.setZero(N);
-            for (std::size_t i = 0; i < N; ++i)
+        //Build the matrix A of the linear system
+        A.setZero(N, N);
+        for (std::size_t i = 0; i < N; ++i)
+            for (std::size_t j = 0; j < N; ++j)
                 for (std::size_t p = 0; p < P; ++p)
-                    for (std::size_t q1 = 0; q1 < Q - 1; ++q1)
-                        for (std::size_t q2 = 0; q2 < Q - 1; ++q2)
+                    for (std::size_t q1 = 0; q1 < Q; ++q1)
+                        for (std::size_t q2 = 0; q2 < Q; ++q2)
                             if (q2 != q1)
-                                b(i) -= Mmax * d[p][q1][q2][i] * d[p][q1][q2][N];
+                                A(i, j) += d[p][q1][q2][i] * (d[p][q1][q2][j] - d[p][q1][q2][N]);
 
-            //Solve the linear system
-            x = A.partialPivLu().solve(b);
-            c << x, Mmax - x.sum();
+        //Build the vector of knowns b
+        b.setZero(N);
+        for (std::size_t i = 0; i < N; ++i)
+            for (std::size_t p = 0; p < P; ++p)
+                for (std::size_t q1 = 0; q1 < Q; ++q1)
+                    for (std::size_t q2 = 0; q2 < Q; ++q2)
+                        if (q2 != q1)
+                            b(i) -= Mmax * d[p][q1][q2][i] * d[p][q1][q2][N];
 
-            //Evaluate approximation increment
-            eval = std::numeric_limits<float>::lowest();
-            for (const Eigen::VectorXf &_M : test) {
-                val = std::abs((c - prev_c).dot(_M));
-                if (val > eval)
-                    eval = val;
-            }
-
-            prev_c = c;
-
-            ++iter;
-        } while (eval > eps && iter < max_iterations);
+        //Solve the linear system
+        x = A.partialPivLu().solve(b);
+        c << x, Mmax - x.sum();
 
         for (std::size_t n = 0; n <= N; ++n)
             coefficients[n] = c[n];
 
         //Evaluate error
         eval = 0.f;
-        for (std::size_t q1 = 0; q1 < Q-1; ++q1)
-            for (std::size_t q2 = 0; q2 < Q-1; ++q2)
+        for (std::size_t q1 = 0; q1 < Q; ++q1)
+            for (std::size_t q2 = 0; q2 < Q; ++q2)
                 if (q2 != q1)
                     for (std::size_t p = 0; p < P; ++p) {
-                        val = 0.f;
-                        for (std::size_t n = 0; n <= N; ++n)
-                            val += coefficients[n] * (M[p][q1][n] - R[q1][q2] * M[p][q2][n]);
-                        eval += val * val;
+                        if (g[p][q1] >= 0.f && g[p][q2] >= 0.f) {
+                            val = 0.f;
+                            for (std::size_t n = 0; n <= N; ++n)
+                                val += coefficients[n] * (M[p][q1][n] - R[q1][q2] * M[p][q2][n]);
+                            eval += val * val;
+                        }
                     }
 
         return eval;
@@ -651,7 +609,7 @@ public:
         this->type_linearization = IL_LUT_8_BIT;
 
         //Subsampling the image stack
-        stackOut.Compute(stack, nSamples, false);
+        stackOut.Compute(stack, nSamples);
 
         int *samples = stackOut.get();
         nSamples = stackOut.getNSamples();
@@ -695,12 +653,10 @@ public:
      * @param nSamples Number of samples to extract from each image.
      * @param full true for computing all exposure ratios (as in book "High Dynamic Range Imaging", second edition, Reinhard et al.), false as in
      *          the original paper (only among successive exposures).
-     * @param eps Threshold on the difference among successive approximations for stopping the computation.
-     * @param max_iterations Stop the computation after this number of iterations.
+     * @param alpha Threshold for removing samples with values not in [alpha, 1-alpha].
      * @return true if successfully computed, false otherwise.
      */
-    bool MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, int nSamples = 256, const bool full = false,
-                        const float eps = 0.0001f, const std::size_t max_iterations = 100)
+    bool MitsunagaNayar(ImageVec &stack, int polynomial_degree = -3, int nSamples = 256, const bool full = false, const float alpha = 0.04f)
     {
         Destroy();
 
@@ -723,7 +679,7 @@ public:
         });
 
         //Subsampling the image stack
-        stackOut.Compute(stack, nSamples, true);
+        stackOut.Compute(stack, nSamples, alpha);
         int *samples = stackOut.get();
         nSamples = stackOut.getNSamples();
 
@@ -744,21 +700,17 @@ public:
         int stride = nSamples * nExposures;
 
         float error = std::numeric_limits<float>::infinity();
-        std::vector<float> R(nExposures - 1);
-        std::vector<std::vector<float>> RR(nExposures - 1, std::vector<float>(nExposures - 1));
 
         poly.resize(channels);
 
         if (polynomial_degree > 0) {
+            error = 0.f;
             for (int i = 0; i < channels; ++i) {
-                error = 0.f;
-                for (int i = 0; i < channels; ++i) {
-                    poly[i].assign(polynomial_degree + 1, 0.f);
-                    if (full) {
-                        error += MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, poly[i], RR, eps, max_iterations);
-                    } else {
-                        error += MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i], R, eps, max_iterations);
-                    }
+                poly[i].assign(polynomial_degree + 1, 0.f);
+                if (full) {
+                    error += MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, poly[i]);
+                } else {
+                    error += MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, poly[i]);
                 }
             }
         } else if (polynomial_degree < 0) {
@@ -769,15 +721,15 @@ public:
                 for (int i = 0; i < channels; ++i) {
                     tmpCoefficients[i].resize(degree + 1);
                     if (full) {
-                        tmpError += MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, tmpCoefficients[i], RR, eps, max_iterations);
+                        tmpError += MitsunagaNayarFull(&samples[i * stride], nSamples, exposures, tmpCoefficients[i]);
                     } else {
-                        tmpError += MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, tmpCoefficients[i], R, eps, max_iterations);
+                        tmpError += MitsunagaNayarClassic(&samples[i * stride], nSamples, exposures, tmpCoefficients[i]);
                     }
                 }
                 if (tmpError < error) {
                     error = tmpError;
                     poly = std::move(tmpCoefficients);
-                    std::cout << degree << std::endl;
+                    tmpCoefficients.resize(channels);
                 }
             }
         }
