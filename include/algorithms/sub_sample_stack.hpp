@@ -81,7 +81,6 @@ protected:
                     float *ptr = std::upper_bound(&bin_c[0], &bin_c[255], u);
 
                     samples[c] = CLAMPi((int)(ptr - bin_c), 0, 255);
-                    printf("%f\n", samples[c]);
                     c++;
                 }
             }
