@@ -202,6 +202,11 @@ public:
             Grossberg(stack);
         }
 
+        if (alpha < 0.f || alpha > 1.f)
+            alpha = 0.f;
+        else if (alpha > 0.5f)
+            alpha = 1.f - alpha;
+
         if(alpha > 0.f && alpha <= 0.5f) {
             float t_min_f = alpha;
             float t_max_f = 1.0f - t_min_f;

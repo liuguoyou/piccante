@@ -716,7 +716,7 @@ public:
         } else if (polynomial_degree < 0) {
             error = std::numeric_limits<float>::infinity();
             std::vector<std::vector<float>> tmpCoefficients(channels);
-            for (int degree = 1; degree <= -polynomial_degree && degree <= 6; ++degree) {
+            for (int degree = 1; degree <= -polynomial_degree; ++degree) {
                 float tmpError = 0.f;
                 for (int i = 0; i < channels; ++i) {
                     tmpCoefficients[i].resize(degree + 1);
