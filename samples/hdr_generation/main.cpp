@@ -1,10 +1,10 @@
- /*
+/*
 
 PICCANTE
 The hottest HDR imaging library!
 http://piccantelib.net
 
-Copyright (C) 2014
+Copyright (C) 2014-2016
 Visual Computing Laboratory - ISTI CNR
 http://vcg.isti.cnr.it
 First author: Francesco Banterle
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
         printf("Estimating the polynomial camera response function... ");
         fflush(stdout);
 
-        bool ok = crf.MitsunagaNayar(stack_vec, -6, 256, true, 0.04f);
+        bool ok = crf.MitsunagaNayar(stack_vec, -6, 256, true, 0.08f, true);
 
         if (ok) {
             printf("Ok.\n");
