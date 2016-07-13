@@ -53,9 +53,9 @@ inline float WeightFunction(float x, CRF_WEIGHT type)
     }
 
     case CW_DEB97: {
-        float Zmin = 0.0f;
-        float Zmax = 1.0f;
-        float tr = (Zmin + Zmax) / 2.0f;
+        static const float Zmin = 0.0f;
+        static const float Zmax = 1.0f;
+        static const float tr = (Zmin + Zmax) / 2.0f;
 
         if(x <= tr) {
             return x - Zmin;
@@ -66,8 +66,8 @@ inline float WeightFunction(float x, CRF_WEIGHT type)
     break;
 
     case CW_DEB97p01: {
-        float Zmin = 0.01f;
-        float Zmax = 0.99f;
+        static const float Zmin = 0.01f;
+        static const float Zmax = 0.99f;
         float tr = (Zmin + Zmax) / 2.0f;
 
         if(x <= tr) {

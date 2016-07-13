@@ -433,12 +433,7 @@ public:
         type_linearization = IL_POLYNOMIAL;
 
         //Sort the array by exposure
-        std::sort(stack.begin(), stack.end(), [](const Image *l, const Image *r)->bool{
-            if (!l || !r) {
-                return false;
-            }
-            return l->exposure < r->exposure;
-        });
+        SortImageVecByExposureTime(stack);
 
         //Subsampling the image stack
         stackOut.Compute(stack, nSamples, alpha);

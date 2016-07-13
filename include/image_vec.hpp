@@ -89,6 +89,20 @@ PIC_INLINE ImageVec Quad(Image *img1, Image *img2, Image *img3,
     return ret;
 }
 
+/**
+ * @brief SortImageVecByExposureTime
+ * @param stack
+ */
+PIC_INLINE void SortImageVecByExposureTime(ImageVec &stack)
+{
+    std::sort(stack.begin(), stack.end(), [](const Image *l, const Image *r)->bool{
+        if (!l || !r) {
+            return false;
+        }
+        return l->exposure < r->exposure;
+    });
+}
+
 } // end namespace pic
 
 #endif /* PIC_IMAGE_RAW_VEC_HPP */
