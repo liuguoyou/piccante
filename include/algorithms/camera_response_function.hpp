@@ -45,10 +45,11 @@ protected:
     /**
     * \brief gsolve computes the inverse CRF of a camera.
     */
-    float *gsolve(int *samples, float *log_exposure, float lambda,
-                  int nSamples, int nExposure)
+    float *gsolve(int *samples, std::vector< float > &log_exposure, float lambda, int nSamples)
     {
 		#ifndef PIC_DISABLE_EIGEN
+
+        unsigned int nExposure = log_exposure.size();
 
         int n = 256;
         int rows = nSamples * nExposure + n + 1;
@@ -167,7 +168,7 @@ public:
     }
 
     /**
-     * @brief Remove removes a camera resposnse function to a value.
+     * @brief Remove linearizes a camera value using the inverse CRF.
      * @param x is an intensity value in [0,1].
      * @param channel
      * @return It returns x in the linear domain.
@@ -204,7 +205,6 @@ public:
 
             default:
                 break;
-
         }
 
         return x;
@@ -238,6 +238,13 @@ public:
             }
             break;
 
+            case IL_POLYNOMIAL: {
+
+            }
+            break;
+
+            default:
+                break;
         }
 
         return x;
@@ -382,11 +389,8 @@ public:
         unsigned int nExposure = stack.size();
 
         //log domain exposure time        
-        float *log_exposure = new float[nExposure];
-
-        for(unsigned int i = 0; i < nExposure; i++) {
-            log_exposure[i] = logf(stack[i]->exposure);
-        }
+        std::vector< float > log_exposures;
+        getExposureTimesAsArray(stack, log_exposures, true);
 
         #ifdef PIC_DEBUG
             printf("nSamples: %d\n", nSamples);
@@ -394,13 +398,10 @@ public:
 
         int stride = nSamples * nExposure;
         for(int i = 0; i < channels; i++) {
-            float *icrf_channel = gsolve(&samples[i * stride], log_exposure, lambda, nSamples,
-                                        nExposure);
+            float *icrf_channel = gsolve(&samples[i * stride], log_exposures, lambda, nSamples);
 
             icrf.push_back(icrf_channel);
         }
-        
-        delete[] log_exposure;
     }
 
     /**
@@ -449,10 +450,14 @@ public:
 
         std::size_t nExposures = stack.size();
 
+        std::vector< float > exposures;
+        getExposureTimesAsArray(stack, exposures, false);
+
+        /*
         std::vector<float> exposures(nExposures, 0.f);
         for (std::size_t t = 0; t < nExposures; ++t) {
             exposures[t] = stack[t]->exposure;
-        }
+        }*/
 
         int stride = nSamples * nExposures;
 

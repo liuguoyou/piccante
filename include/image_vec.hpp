@@ -103,6 +103,22 @@ PIC_INLINE void SortImageVecByExposureTime(ImageVec &stack)
     });
 }
 
+
+/**
+ * @brief getExposureTimesAsArray
+ * @param stack
+ */
+PIC_INLINE void getExposureTimesAsArray(ImageVec &stack, std::vector<float> &output, bool bLog)
+{
+    output.clear();
+
+    for(unsigned int i = 0; i < stack.size(); i++) {
+        float tmp = bLog ? log(stack[i]->exposure) : stack[i]->exposure;
+        output.push_back(tmp);
+    }
+}
+
+
 } // end namespace pic
 
 #endif /* PIC_IMAGE_RAW_VEC_HPP */
