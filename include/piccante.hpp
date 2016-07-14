@@ -140,7 +140,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * loading extensions libraries; users are free to use their favourite ones.
  * Note that when using OpenGL and QT together; QT will load OpenGL functions by default
  * in order to avoid clashes.
- * In the examples (folder "samples"), we generated .h and .c files for loading OpenGL extensions
+ * In the examples (folder “examples”), we generated .h and .c files for loading OpenGL extensions
  * using glLoadGen. This is meant for learning purposes only; we do not want to force users to use
  * it; e.g. GLEW or other libraries can be employed instead.
  *
