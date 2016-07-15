@@ -165,6 +165,9 @@ public:
         Destroy();
     }
 
+    /**
+     * @brief Destroy
+     */
     void Destroy()
     {
         exposures = 0;

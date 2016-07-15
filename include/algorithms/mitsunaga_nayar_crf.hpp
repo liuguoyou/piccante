@@ -41,6 +41,7 @@ inline float MitsunagaNayarClassic(int *samples, const std::size_t nSamples, con
                                    std::vector<float> &coefficients, const bool computeRatios, std::vector<float> &R,
                                    const float eps, const std::size_t max_iterations)
 {
+#ifndef PIC_DISABLE_EIGEN
     float eval, val, tmp1, tmp2;
     const std::size_t Q = exposures.size();
     const std::size_t N = coefficients.size() - 1;
@@ -211,6 +212,9 @@ inline float MitsunagaNayarClassic(int *samples, const std::size_t nSamples, con
     }
 
     return eval;
+#else
+    return -1.0f;
+#endif
 }
 
 /**
@@ -229,6 +233,7 @@ inline float MitsunagaNayarFull(int *samples, const std::size_t nSamples, const 
                                 std::vector<float> &coefficients, bool computeRatios, std::vector<std::vector<float>> &R,
                                 const float eps, const std::size_t max_iterations)
 {
+#ifndef PIC_DISABLE_EIGEN
     float eval, val, tmp1, tmp2;
     const std::size_t Q = exposures.size();
     const std::size_t N = coefficients.size() - 1;
@@ -422,6 +427,9 @@ inline float MitsunagaNayarFull(int *samples, const std::size_t nSamples, const 
     }
 
     return eval;
+#else
+    return -1.0f;
+#endif
 }
 
 }

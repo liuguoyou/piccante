@@ -114,6 +114,47 @@ protected:
     void Destroy()
     {
         stackOut.Destroy();
+
+        for(unsigned int i = 0; i < icrf.size(); i++) {
+            if(icrf[i] != NULL) {
+                delete[] icrf[i];
+            }
+
+            if(crf[i] != NULL) {
+                delete[] crf[i];
+            }
+        }
+
+        icrf.clear();
+        crf.clear();
+        poly.clear();
+    }
+
+    /**
+     * @brief polyval
+     * @param poly
+     * @return
+     */
+    float polyval(std::vector< float > & poly, float x)
+    {
+        float val = 0.f;
+        float M = 1.f;
+        for (const float &c : poly) {
+            val += c * M;
+            M *= x;
+        }
+        return val;
+    }
+
+    /**
+     * @brief CreateTabledICRF
+     */
+    void CreateTabledICRF()
+    {
+        if(type_linearization != IL_POLYNOMIAL) {
+            return;
+        }
+
         for(unsigned int i = 0; i < icrf.size(); i++) {
             if(icrf[i] != NULL) {
                 delete[] icrf[i];
@@ -121,27 +162,18 @@ protected:
         }
 
         icrf.clear();
-        poly.clear();
-    }
 
-    /**
-     * @brief stackCheck
-     * @param stack
-     * @return
-     */
-    bool stackCheck(ImageVec &stack)
-    {
-        if(stack.size() < 2) {
-            return false;
-        }
+        for(int i=0; i<poly.size(); i++) {
+            float *tmp = new float[256];
 
-        for (size_t i=1; i<stack.size(); i++) {
-            if (!stack[0]->SimilarType(stack[i])) {
-                return false;
+            for(int j=0; j<256; j++) {
+                float x = float(j) / 255.0f;
+
+                tmp[j] = polyval(poly[i], x);
             }
-        }
 
-        return true;
+            crf.push_back(tmp);
+        }
     }
 
     SubSampleStack          stackOut;
@@ -151,8 +183,9 @@ protected:
 public:
 
     std::vector<float *>    icrf;
+    std::vector<float *>     crf;
 
-    std::vector<std::vector<float>>  poly;
+    std::vector< std::vector<float> >  poly;
     
     /**
      * @brief CameraResponseFunction
@@ -193,13 +226,7 @@ public:
             break;
 
             case IL_POLYNOMIAL: {
-                float val = 0.f;
-                float M = 1.f;
-                for (const float &c : poly[channel]) {
-                    val += c * M;
-                    M *= x;
-                }
-                return val;
+                return polyval(poly[channel], x);
             }
             break;
 
@@ -239,7 +266,10 @@ public:
             break;
 
             case IL_POLYNOMIAL: {
+                float *ptr = std::lower_bound(&icrf[channel][0], &icrf[channel][255], x);
+                int offset = CLAMPi((int)(ptr - icrf[channel]), 0, 255);
 
+                return float(offset) / 255.0f;
             }
             break;
 
@@ -248,6 +278,22 @@ public:
         }
 
         return x;
+    }
+
+    /**
+     * @brief setCRFtoGamma2_2
+     */
+    void setCRFtoGamma2_2()
+    {
+        type_linearization = IL_2_2;
+    }
+
+    /**
+     * @brief setCRFtoLinear
+     */
+    void setCRFtoLinear()
+    {
+        type_linearization = IL_LIN;
     }
 
     /**
@@ -334,22 +380,6 @@ public:
     }
 
     /**
-     * @brief setCRFtoGamma2_2
-     */
-    void setCRFtoGamma2_2()
-    {
-        type_linearization = IL_2_2;
-    }
-
-    /**
-     * @brief setCRFtoLinear
-     */
-    void setCRFtoLinear()
-    {
-        type_linearization = IL_LIN;
-    }
-
-    /**
      * @brief DebevecMalik computes the CRF of a camera using multiple exposures value following Debevec and Malik
     1997's method.
      * @param stack
@@ -362,7 +392,7 @@ public:
     {
         Destroy();
 
-        if(!stackCheck(stack)) {
+        if(!ImageVecCheckSimilarType(stack)) {
             return;
         }
 
@@ -390,7 +420,7 @@ public:
 
         //log domain exposure time        
         std::vector< float > log_exposures;
-        getExposureTimesAsArray(stack, log_exposures, true);
+        ImaveVecGetExposureTimesAsArray(stack, log_exposures, true);
 
         #ifdef PIC_DEBUG
             printf("nSamples: %d\n", nSamples);
@@ -423,7 +453,7 @@ public:
     {
         Destroy();
 
-        if(!stackCheck(stack)) {
+        if(!ImageVecCheckSimilarType(stack)) {
             return false;
         }
 
@@ -434,7 +464,7 @@ public:
         type_linearization = IL_POLYNOMIAL;
 
         //Sort the array by exposure
-        SortImageVecByExposureTime(stack);
+        ImaveVecSortByExposureTime(stack);
 
         //Subsampling the image stack
         stackOut.Compute(stack, nSamples, alpha);
@@ -451,13 +481,7 @@ public:
         std::size_t nExposures = stack.size();
 
         std::vector< float > exposures;
-        getExposureTimesAsArray(stack, exposures, false);
-
-        /*
-        std::vector<float> exposures(nExposures, 0.f);
-        for (std::size_t t = 0; t < nExposures; ++t) {
-            exposures[t] = stack[t]->exposure;
-        }*/
+        ImaveVecGetExposureTimesAsArray(stack, exposures, false);
 
         int stride = nSamples * nExposures;
 
@@ -498,7 +522,13 @@ public:
             }
         }
 
-        return error < std::numeric_limits<float>::infinity();
+        bool bOk = error < std::numeric_limits<float>::infinity();
+
+        if(bOk) {
+            CreateTabledICRF();
+        }
+
+        return bOk;
     }
 
     /**
@@ -511,7 +541,7 @@ public:
     {
         Destroy();
 
-        if(!stackCheck(stack)) {
+        if(!ImageVecCheckSimilarType(stack)) {
             return;
         }
 

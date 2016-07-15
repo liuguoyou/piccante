@@ -90,10 +90,10 @@ PIC_INLINE ImageVec Quad(Image *img1, Image *img2, Image *img3,
 }
 
 /**
- * @brief SortImageVecByExposureTime
+ * @brief ImaveVecSortByExposureTime
  * @param stack
  */
-PIC_INLINE void SortImageVecByExposureTime(ImageVec &stack)
+PIC_INLINE void ImaveVecSortByExposureTime(ImageVec &stack)
 {
     std::sort(stack.begin(), stack.end(), [](const Image *l, const Image *r)->bool{
         if (!l || !r) {
@@ -105,10 +105,10 @@ PIC_INLINE void SortImageVecByExposureTime(ImageVec &stack)
 
 
 /**
- * @brief getExposureTimesAsArray
+ * @brief ImaveVecGetExposureTimesAsArray
  * @param stack
  */
-PIC_INLINE void getExposureTimesAsArray(ImageVec &stack, std::vector<float> &output, bool bLog)
+PIC_INLINE void ImaveVecGetExposureTimesAsArray(ImageVec &stack, std::vector<float> &output, bool bLog)
 {
     output.clear();
 
@@ -118,6 +118,25 @@ PIC_INLINE void getExposureTimesAsArray(ImageVec &stack, std::vector<float> &out
     }
 }
 
+/**
+ * @brief ImageVecCheckSimilarType
+ * @param stack
+ * @return
+ */
+PIC_INLINE bool ImageVecCheckSimilarType(ImageVec &stack)
+{
+    if(stack.size() < 2) {
+        return false;
+    }
+
+    for (size_t i=1; i<stack.size(); i++) {
+        if (!stack[0]->SimilarType(stack[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 } // end namespace pic
 
