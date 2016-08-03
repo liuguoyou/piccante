@@ -42,8 +42,8 @@ If you use PICCANTE in your work, please cite it using this reference:
  Howpublished = {\url{http://vcg.isti.cnr.it/piccante}
  }
 
-SCREENSHOT:
-===========
+SCREENSHOTS:
+============
 Piccante can be used for generating HDR images starting from a stack of classic 8-bit
 images.
 
