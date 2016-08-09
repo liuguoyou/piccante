@@ -16,7 +16,7 @@ HOW TO INSTALL:
 
 NOTE ON PULL REQUESTS:
 =====================
-Please, send your pull requests to the devel branch and not to the master.
+Please, send your pull requests to the develop branch and not to the master.
 
 TEAM:
 =====
