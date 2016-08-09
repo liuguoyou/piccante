@@ -14,6 +14,10 @@ HOW TO INSTALL:
 
 3) Include "piccante.hpp" in your project
 
+NOTE ON PULL REQUESTS:
+=====================
+Please, send your pull requests to the devel branch and not to the master.
+
 TEAM:
 =====
 
