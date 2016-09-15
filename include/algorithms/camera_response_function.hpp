@@ -573,8 +573,8 @@ public:
         }
 
         // avoid ghosting (for each exposure get the index for the immediately higher and lower exposure)
-        int lower [stack.size()];
-        int higher[stack.size()];
+        int *lower = new int [stack.size()];
+        int *higher = new int[stack.size()];
 
         for (size_t i=0; i<stack.size(); i++) {
             lower[i]  = -1;
@@ -803,6 +803,9 @@ public:
         for (unsigned char * qslice : qstack) {
             delete qslice;
         }
+
+        delete[] lower;
+        delete[] higher;
     }
 };
 
