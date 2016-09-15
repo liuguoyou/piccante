@@ -18,6 +18,8 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef PIC_ALGORITHMS_CAMERA_RESPONSE_FUNCTION_HPP
 #define PIC_ALGORITHMS_CAMERA_RESPONSE_FUNCTION_HPP
 
+#include <algorithm>
+
 #include "image.hpp"
 #include "point_samplers/sampler_random.hpp"
 #include "histogram.hpp"
@@ -260,8 +262,13 @@ public:
             break;
 
             case IL_2_2: {
-                constexpr float inv_gamma = 1.0f / 2.2f;
-                return powf(x, inv_gamma);
+               #ifdef PIC_WIN32
+                  float inv_gamma = 1.0f / 2.2f;
+               #else
+                  constexpr float inv_gamma = 1.0f / 2.2f;
+               #endif
+
+               return powf(x, inv_gamma);
             }
             break;
 
