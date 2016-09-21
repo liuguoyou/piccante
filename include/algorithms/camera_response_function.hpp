@@ -24,6 +24,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "point_samplers/sampler_random.hpp"
 #include "histogram.hpp"
 #include "filtering/filter_mean.hpp"
+#include "util/polynomial.hpp"
 
 #include "algorithms/sub_sample_stack.hpp"
 #include "algorithms/weight_function.hpp"
@@ -133,22 +134,6 @@ protected:
     }
 
     /**
-     * @brief polyval
-     * @param poly
-     * @return
-     */
-    float polyval(std::vector< float > & poly, float x)
-    {
-        float val = 0.f;
-        float M = 1.f;
-        for (const float &c : poly) {
-            val += c * M;
-            M *= x;
-        }
-        return val;
-    }
-
-    /**
      * @brief CreateTabledICRF
      */
     void CreateTabledICRF()
@@ -171,7 +156,7 @@ protected:
             for(int j=0; j<256; j++) {
                 float x = float(j) / 255.0f;
 
-                tmp[j] = polyval(poly[i], x);
+                tmp[j] = polynomialVal(poly[i], x);
             }
 
             crf.push_back(tmp);
@@ -228,7 +213,7 @@ public:
             break;
 
             case IL_POLYNOMIAL: {
-                return polyval(poly[channel], x);
+                return polynomialVal(poly[channel], x);
             }
             break;
 

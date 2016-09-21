@@ -45,6 +45,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "util/image_sampler.hpp"
 #include "util/io.hpp"
 #include "util/math.hpp"
+#include "util/polynomial.hpp"
 #include "util/matrix_3_x_3.hpp"
 #include "util/eigen_util.hpp"
 #include "util/point_samplers.hpp"
